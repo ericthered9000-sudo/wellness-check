@@ -1,0 +1,210 @@
+.weekly-report {
+  padding: 20px;
+}
+
+.report-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.report-header h2 {
+  margin: 0 0 10px 0;
+  font-size: 28px;
+}
+
+.report-period {
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.report-card {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.report-card .card-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.report-card h3 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.report-card .number {
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.report-card .score {
+  font-size: 32px;
+  font-weight: bold;
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 8px;
+}
+
+.report-card .label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+.report-card.wellness .score-good {
+  background: #d4edda;
+  color: #155724;
+}
+
+.report-card.wellness .score-moderate {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.report-card.wellness .score-low {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.report-card.steps .number {
+  color: var(--primary-color);
+}
+
+.report-card.heart .number {
+  color: #e74c3c;
+}
+
+.report-card.sleep .number {
+  color: #9b59b6;
+}
+
+.report-card.meds .score-good {
+  background: #d4edda;
+  color: #155724;
+}
+
+.report-card.meds .score-moderate {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.report-card.meds .score-low {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.report-insights {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.report-insights h3 {
+  margin: 0 0 15px 0;
+  color: var(--primary-color);
+}
+
+.insights-box p {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.report-actions {
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .report-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .report-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .report-card .score,
+  .report-card .number {
+    font-size: 24px;
+  }
+}
+
+/* Modal styles */
+.modal {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+
+.modal-content {
+  background: var(--modal-bg);
+  border-radius: 10px;
+  max-width: 800px;
+  margin: 50px auto;
+  padding: 20px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-large {
+  max-width: 900px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+}
+
+.close-btn:hover {
+  color: var(--text-primary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.weekly-report-section {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}

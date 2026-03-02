@@ -1,0 +1,284 @@
+/**
+ * Health API Routes
+ * Google Fit integration endpoints
+ */
+
+import express from 'express';
+import {
+  getAuthorizationUrl,
+  exchangeCodeForTokens,
+  revokeToken,
+  saveConnection,
+  getConnection,
+  deleteConnection,
+  syncHealthData,
+  getHealthSummary
+} from './google-fit';
+
+const router = express.Router();
+
+// ==================== OAuth Routes ====================
+
+/**
+ * Start Google Fit OAuth flow
+ * GET /api/health/google/authorize
+ */
+router.get('/google/authorize', (req, res) => {
+  const userId = req.query.userId as string || req.headers['x-user-id'] as string;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  // Generate state with user ID for callback verification
+  const state = Buffer.from(JSON.stringify({ userId, timestamp: Date.now() })).toString('base64');
+  
+  const authUrl = getAuthorizationUrl(state);
+  
+  res.json({ 
+    authorizationUrl: authUrl,
+    message: 'Visit this URL to authorize Google Fit access'
+  });
+});
+
+/**
+ * OAuth callback from Google
+ * GET /api/health/google/callback
+ */
+router.get('/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  
+  if (error) {
+    return res.status(400).json({ error: req.query.error_description || error });
+  }
+  
+  if (!code || !state) {
+    return res.status(400).json({ error: 'Missing code or state' });
+  }
+  
+  try {
+    // Parse state
+    const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
+    const { userId } = stateData;
+    
+    // Exchange code for tokens
+    const tokens = await exchangeCodeForTokens(code as string);
+    
+    // Save connection
+    saveConnection(userId, tokens);
+    
+    // Redirect to success page or close window
+    res.send(`
+      <html>
+        <body>
+          <h3>✅ Google Fit Connected Successfully!</h3>
+          <p>You can close this window and return to the app.</p>
+          <script>
+            setTimeout(() => window.close(), 3000);
+          </script>
+        </body>
+      </html>
+    `);
+  } catch (err: any) {
+    console.error('OAuth callback error:', err);
+    res.status(500).json({ error: 'Failed to complete authorization' });
+  }
+});
+
+/**
+ * Get connection status
+ * GET /api/health/google/status
+ */
+router.get('/google/status', (req, res) => {
+  const userId = req.query.userId as string || req.headers['x-user-id'] as string;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  const connection = getConnection(userId);
+  
+  res.json({
+    connected: !!connection,
+    lastSync: connection?.last_sync_at || null,
+    syncEnabled: connection?.sync_enabled ?? false
+  });
+});
+
+/**
+ * Disconnect Google Fit
+ * DELETE /api/health/google/disconnect
+ */
+router.delete('/google/disconnect', async (req, res) => {
+  const userId = req.query.userId as string || req.headers['x-user-id'] as string;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  try {
+    const connection = getConnection(userId);
+    
+    if (connection) {
+      // Revoke Google token
+      await revokeToken(connection.access_token);
+      
+      // Delete local connection
+      deleteConnection(userId);
+    }
+    
+    res.json({ success: true, message: 'Google Fit disconnected' });
+  } catch (err: any) {
+    console.error('Disconnect error:', err);
+    res.status(500).json({ error: 'Failed to disconnect' });
+  }
+});
+
+// ==================== Health Data Routes ====================
+
+/**
+ * Sync health data from Google Fit
+ * POST /api/health/sync
+ */
+router.post('/sync', async (req, res) => {
+  const userId = req.body.userId || req.headers['x-user-id'];
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  try {
+    const result = await syncHealthData(userId);
+    
+    res.json({
+      success: true,
+      message: 'Health data synced successfully',
+      synced: result
+    });
+  } catch (err: any) {
+    console.error('Sync error:', err);
+    res.status(500).json({ error: 'Failed to sync health data' });
+  }
+});
+
+/**
+ * Get health summary
+ * GET /api/health/summary
+ */
+router.get('/summary', (req, res) => {
+  const userId = req.query.userId as string || req.headers['x-user-id'] as string;
+  const days = parseInt(req.query.days as string) || 7;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  try {
+    const summary = getHealthSummary(userId, days);
+    
+    res.json({
+      userId,
+      period: `${days} days`,
+      ...summary
+    });
+  } catch (err: any) {
+    console.error('Summary error:', err);
+    res.status(500).json({ error: 'Failed to get health summary' });
+  }
+});
+
+/**
+ * Get step count history
+ * GET /api/health/steps
+ */
+router.get('/steps', (req, res) => {
+  const userId = req.query.userId as string || req.headers['x-user-id'] as string;
+  const days = parseInt(req.query.days as string) || 7;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  try {
+    const stmt = require('better-sqlite3')('./wellness.db').prepare(`
+      SELECT date, steps FROM step_summaries 
+      WHERE user_id = ? 
+      ORDER BY date DESC LIMIT ?
+    `);
+    
+    const steps = stmt.all(userId, days);
+    
+    res.json({ userId, steps });
+  } catch (err: any) {
+    console.error('Steps error:', err);
+    res.status(500).json({ error: 'Failed to get step data' });
+  }
+});
+
+/**
+ * Get heart rate data
+ * GET /api/health/heart-rate
+ */
+router.get('/heart-rate', (req, res) => {
+  const userId = req.query.userId as string || req.headers['x-user-id'] as string;
+  const days = parseInt(req.query.days as string) || 7;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  try {
+    const stmt = require('better-sqlite3')('./wellness.db').prepare(`
+      SELECT bpm, recorded_at FROM heart_rate_readings 
+      WHERE user_id = ? 
+      AND recorded_at >= datetime('now', '-' || ? || ' days')
+      ORDER BY recorded_at DESC
+    `);
+    
+    const heartRate = stmt.all(userId, days);
+    
+    res.json({ userId, heartRate });
+  } catch (err: any) {
+    console.error('Heart rate error:', err);
+    res.status(500).json({ error: 'Failed to get heart rate data' });
+  }
+});
+
+/**
+ * Get sleep data
+ * GET /api/health/sleep
+ */
+router.get('/sleep', (req, res) => {
+  const userId = req.query.userId as string || req.headers['x-user-id'] as string;
+  const days = parseInt(req.query.days as string) || 7;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+  
+  try {
+    const stmt = require('better-sqlite3')('./wellness.db').prepare(`
+      SELECT 
+        start_time,
+        end_time,
+        duration_minutes,
+        deep_minutes,
+        light_minutes,
+        rem_minutes,
+        awake_minutes
+      FROM sleep_sessions 
+      WHERE user_id = ? 
+      AND start_time >= datetime('now', '-' || ? || ' days')
+      ORDER BY start_time DESC
+    `);
+    
+    const sleep = stmt.all(userId, days);
+    
+    res.json({ userId, sleep });
+  } catch (err: any) {
+    console.error('Sleep error:', err);
+    res.status(500).json({ error: 'Failed to get sleep data' });
+  }
+});
+
+export default router;

@@ -1,0 +1,409 @@
+/* Medications Tab Styles */
+
+.medications-tab {
+  padding: 20px;
+}
+
+/* Adherence Card */
+.adherence-card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+
+.adherence-card h3 {
+  margin-bottom: 15px;
+  font-size: var(--font-lg);
+}
+
+.adherence-score {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.adherence-score .score {
+  font-size: 48px;
+  font-weight: 700;
+}
+
+.adherence-score .score.good {
+  color: var(--success);
+}
+
+.adherence-score .score.moderate {
+  color: var(--warning);
+}
+
+.adherence-score .score.low {
+  color: var(--danger);
+}
+
+.adherence-score .label {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.medication-breakdown {
+  border-top: 1px solid var(--border);
+  padding-top: 15px;
+}
+
+.med-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.med-name {
+  font-size: 14px;
+}
+
+.med-percent {
+  font-weight: 600;
+}
+
+.med-percent.good {
+  color: var(--success);
+}
+
+.med-percent.moderate {
+  color: var(--warning);
+}
+
+.med-percent.low {
+  color: var(--danger);
+}
+
+/* Medications List */
+.medications-list {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.list-header h3 {
+  margin: 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state .hint {
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+/* Medication Cards */
+.medication-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.medication-card {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 15px;
+  position: relative;
+}
+
+/* Status-based styling */
+.medication-card.status-taken {
+  border-color: var(--success);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), transparent);
+}
+
+.medication-card.status-due {
+  border-color: var(--warning);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), transparent);
+  animation: pulse-border 2s infinite;
+}
+
+.medication-card.status-missed {
+  border-color: var(--danger);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+}
+
+.medication-card.status-upcoming {
+  border-color: var(--primary);
+}
+
+.medication-card.status-pending {
+  border-color: var(--border);
+}
+
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(234, 179, 8, 0); }
+}
+
+/* Status Badge */
+.med-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.status-taken .med-status-badge {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.status-due .med-status-badge {
+  background: rgba(234, 179, 8, 0.2);
+  color: var(--warning);
+  animation: pulse-badge 1.5s infinite;
+}
+
+.status-missed .med-status-badge {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.status-upcoming .med-status-badge {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--primary);
+}
+
+.status-pending .med-status-badge {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-muted);
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.status-icon {
+  font-size: 16px;
+}
+
+.med-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.med-header h4 {
+  margin: 0;
+  font-size: var(--font-base);
+}
+
+.med-header .dosage {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.med-schedule {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.schedule-type {
+  background: var(--primary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.times {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.instructions {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 8px 0;
+  font-style: italic;
+}
+
+.med-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Larger touch targets for elderly users */
+.btn-large {
+  padding: 14px 20px !important;
+  font-size: 16px !important;
+  min-height: 52px;
+  width: 100%;
+}
+
+.last-taken {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.modal form {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: var(--font-base);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.time-slot {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.time-slot input {
+  flex: 1;
+}
+
+.time-slot button {
+  padding: 8px 12px;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.form-actions .btn {
+  flex: 1;
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .med-actions {
+    flex-wrap: wrap;
+  }
+  
+  .med-actions .btn {
+    flex: 1 1 45%;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+}
