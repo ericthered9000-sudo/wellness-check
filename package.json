@@ -1,0 +1,13 @@
+{
+  "name": "wellness-check",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "build": "npm run build --workspace=backend",
+    "start": "npm start --workspace=backend"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
