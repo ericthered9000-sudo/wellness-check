@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
 
 [phases.install]
 cmds = ["npm install", "cd backend && npm install"]
 
 [phases.build]
-cmds = ["cd backend && npm run build"]
+cmds = ["cd backend && npm run build", "cd backend && npm rebuild better-sqlite3"]
 
 [start]
 cmd = "cd backend && npm start"
