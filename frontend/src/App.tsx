@@ -7,6 +7,7 @@ import { WeeklyReport } from './components/WeeklyReport'
 import { DoctorVisits } from './components/DoctorVisits'
 import { Notifications } from './components/Notifications'
 import { BottomNav } from './components/BottomNav'
+import { API_URL } from './config'
 import './components/ThemePicker.css'
 import './components/MedicationsTab.css'
 import './components/WeeklyReport.css'
@@ -15,7 +16,6 @@ import './components/Notifications.css'
 import './components/BottomNav.css'
 import './App.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface User {
   id: string;

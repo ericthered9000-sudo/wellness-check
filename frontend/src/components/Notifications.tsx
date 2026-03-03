@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import './Notifications.css';
 
 interface Notification {
@@ -16,7 +17,6 @@ interface NotificationsProps {
   onMarkAsRead: (notificationId: string) => void;
 }
 
-const API_URL = 'http://localhost:3001';
 
 export function Notifications({ userId, onMarkAsRead }: NotificationsProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
