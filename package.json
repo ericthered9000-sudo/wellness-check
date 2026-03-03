@@ -9,6 +9,6 @@
     "start": "npm start --workspace=backend"
   },
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   }
 }
