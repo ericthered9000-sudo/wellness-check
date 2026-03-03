@@ -5,6 +5,7 @@
   "workspaces": ["backend", "frontend"],
   "scripts": {
     "build": "npm run build --workspace=backend",
+    "postinstall": "cd backend && npm rebuild better-sqlite3",
     "start": "npm start --workspace=backend"
   },
   "engines": {
