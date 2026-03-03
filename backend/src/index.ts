@@ -20,8 +20,22 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Database setup
-const db = new Database('./wellness.db');
+// Database setup - use /data directory on Railway for persistent storage
+import { existsSync, mkdirSync } from 'fs';
+
+const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH 
+  ? `${process.env.RAILWAY_VOLUME_MOUNT_PATH}/wellness.db`
+  : process.env.DATA_DIR 
+    ? `${process.env.DATA_DIR}/wellness.db`
+    : './wellness.db';
+
+const dbDir = dbPath.substring(0, dbPath.lastIndexOf('/'));
+if (dbDir && !existsSync(dbDir)) {
+  mkdirSync(dbDir, { recursive: true });
+}
+
+console.log(`Database path: ${dbPath}`);
+const db = new Database(dbPath);
 
 // Initialize database schema
 db.exec(`
