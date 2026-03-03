@@ -1,0 +1,40 @@
+.offline-banner {
+ position: fixed;
+ top: 0;
+ left: 0;
+ right: 0;
+ background: #f59e0b;
+ color: white;
+ padding: 0.75rem 1rem;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ gap: 0.5rem;
+ font-size: 0.875rem;
+ font-weight: 500;
+ z-index: 9999;
+ box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+ animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+ from {
+ transform: translateY(-100%);
+ }
+ to {
+ transform: translateY(0);
+ }
+}
+
+.offline-icon {
+ font-size: 1.25rem;
+}
+
+.offline-text {
+ text-align: center;
+}
+
+/* Adjust body padding when offline banner is visible */
+body.has-offline-banner {
+ padding-top: 3rem;
+}

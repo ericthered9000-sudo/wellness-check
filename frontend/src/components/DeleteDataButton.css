@@ -1,0 +1,142 @@
+.delete-data-container {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color, #eee);
+}
+
+.delete-data-btn {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-data-btn:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
+.delete-hint {
+  font-size: 0.875rem;
+  color: var(--text-muted, #888);
+  margin: 0.5rem 0 0;
+  text-align: center;
+}
+
+.confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.confirm-modal {
+  background: var(--bg-secondary, #fff);
+  border-radius: 1rem;
+  max-width: 400px;
+  width: 100%;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.confirm-modal h3 {
+  margin: 0 0 1rem;
+  color: var(--text-primary, #333);
+}
+
+.confirm-text {
+  color: var(--text-secondary, #555);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.confirm-warning {
+  color: #dc2626;
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.cancel-btn,
+.confirm-delete-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  color: var(--text-secondary, #666);
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #e5e5e5;
+}
+
+.confirm-delete-btn {
+  background: #dc2626;
+  color: white;
+}
+
+.confirm-delete-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.confirm-delete-btn:disabled,
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.delete-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 0.5rem;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.success-icon {
+  font-size: 1.25rem;
+}

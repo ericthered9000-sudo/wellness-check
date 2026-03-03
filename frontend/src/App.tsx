@@ -7,6 +7,16 @@ import { WeeklyReport } from './components/WeeklyReport'
 import { DoctorVisits } from './components/DoctorVisits'
 import { Notifications } from './components/Notifications'
 import { BottomNav } from './components/BottomNav'
+import { DisclaimerModal, useDisclaimerAccepted } from './components/DisclaimerModal'
+import { PrivacyModal } from './components/PrivacyModal'
+import { TermsModal } from './components/TermsModal'
+import { DeleteDataButton } from './components/DeleteDataButton'
+import { OfflineIndicator } from './components/OfflineIndicator'
+import './components/OfflineIndicator.css'
+import './components/DisclaimerModal.css'
+import './components/PrivacyModal.css'
+import './components/TermsModal.css'
+import './components/DeleteDataButton.css'
 import { API_URL } from './config'
 import './components/ThemePicker.css'
 import './components/MedicationsTab.css'
@@ -82,6 +92,9 @@ function App() {
   const [navSection, setNavSection] = useState<'home' | 'meds' | 'appointments' | 'report'>('home');
   const [showCheckInRequest, setShowCheckInRequest] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+ const [showPrivacy, setShowPrivacy] = useState(false);
+ const [showTerms, setShowTerms] = useState(false);
+ const { accepted: disclaimerAccepted, acceptDisclaimer, resetDisclaimer } = useDisclaimerAccepted();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'default'>('default');
   const checkInMessageRef = useRef<HTMLTextAreaElement>(null);
 
@@ -301,6 +314,7 @@ function App() {
 
   return (
     <div className="app">
+ <OfflineIndicator />
       <header className="header">
         <h1>🏥 Wellness Check</h1>
         <p className="tagline">Sharing wellness, not surveillance</p>
@@ -318,14 +332,51 @@ function App() {
         </div>
       </header>
 
-      {showSettings && (
-        <div className="settings-modal" onClick={() => setShowSettings(false)}>
-          <div className="settings-content" onClick={e => e.stopPropagation()}>
-            <ThemePicker onClose={() => setShowSettings(false)} />
-          </div>
-        </div>
-      )}
-
+ {showSettings && (
+ <div className="settings-modal" onClick={() => setShowSettings(false)}>
+ <div className="settings-content" onClick={e => e.stopPropagation()}>
+ <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Settings</h2>
+ <ThemePicker onClose={() => setShowSettings(false)} />
+ 
+ <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color, #eee)', paddingTop: '1rem' }}>
+ <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Legal</h3>
+ <button 
+ className="link-btn" 
+ onClick={() => { setShowPrivacy(true); setShowSettings(false); }}
+ style={{ background: 'none', border: 'none', color: 'var(--primary-color, #007bff)', cursor: 'pointer', padding: '0.5rem 0', textAlign: 'left', width: '100%' }}
+ >
+ Privacy Policy
+ </button>
+ <button 
+ className="link-btn" 
+ onClick={() => { setShowTerms(true); setShowSettings(false); }}
+ style={{ background: 'none', border: 'none', color: 'var(--primary-color, #007bff)', cursor: 'pointer', padding: '0.5rem 0', textAlign: 'left', width: '100%' }}
+ >
+ Terms of Service
+ </button>
+ <button 
+ className="link-btn" 
+ onClick={() => { resetDisclaimer(); setShowSettings(false); }}
+ style={{ background: 'none', border: 'none', color: 'var(--primary-color, #007bff)', cursor: 'pointer', padding: '0.5rem 0', textAlign: 'left', width: '100%' }}
+ >
+ View Medical Disclaimer
+ </button>
+ </div>
+ 
+ <DeleteDataButton onDelete={async () => { localStorage.clear(); window.location.reload(); }} />
+ </div>
+ </div>
+ )}
+ 
+ {!disclaimerAccepted && (
+ <DisclaimerModal 
+ onAccept={acceptDisclaimer} 
+ onExit={() => { if(confirm('Are you sure you want to exit?')) { window.close(); } }} 
+ />
+ )}
+ 
+ {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
+ {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
       {view === 'home' && (
         <main className="home">
           <div className="intro">

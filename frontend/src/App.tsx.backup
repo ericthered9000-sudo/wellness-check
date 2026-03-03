@@ -3,11 +3,19 @@ import { io, Socket } from 'socket.io-client'
 import { useTheme } from './contexts/ThemeContext'
 import { ThemePicker, ThemeButton } from './components/ThemePicker'
 import { MedicationsTab } from './components/MedicationsTab'
+import { WeeklyReport } from './components/WeeklyReport'
+import { DoctorVisits } from './components/DoctorVisits'
+import { Notifications } from './components/Notifications'
+import { BottomNav } from './components/BottomNav'
+import { API_URL } from './config'
 import './components/ThemePicker.css'
 import './components/MedicationsTab.css'
+import './components/WeeklyReport.css'
+import './components/DoctorVisits.css'
+import './components/Notifications.css'
+import './components/BottomNav.css'
 import './App.css'
 
-const API_URL = 'http://localhost:3001';
 
 interface User {
   id: string;
@@ -30,7 +38,6 @@ interface WellnessScore {
   factors?: any;
   calculated?: boolean;
 }
-
 
 interface Alert {
   alerts: string[];
@@ -71,10 +78,55 @@ function App() {
   const [alerts, setAlerts] = useState<Alert | null>(null);
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'wellness' | 'activity' | 'alerts'>('wellness');
+  const [activeTab, setActiveTab] = useState<'wellness' | 'activity' | 'alerts' | 'report'>('wellness');
+  const [navSection, setNavSection] = useState<'home' | 'meds' | 'appointments' | 'report'>('home');
   const [showCheckInRequest, setShowCheckInRequest] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'default'>('default');
   const checkInMessageRef = useRef<HTMLTextAreaElement>(null);
+
+  // Request push notification permission
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      alert('This browser does not support notifications');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    
+    if (permission === 'granted') {
+      // Register for push notifications
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: undefined // Would need VAPID key in production
+        });
+        
+        // Send subscription to server
+        await fetch(`${API_URL}/api/notifications/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user?.id || 'demo-user',
+            subscription: subscription.toJSON()
+          })
+        });
+        
+        console.log('Push notifications enabled!');
+      } catch (error) {
+        console.error('Failed to register for push notifications:', error);
+      }
+    }
+  };
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
 
   const loginAsSenior = async () => {
     const userId = 'senior-demo-1';
@@ -252,7 +304,18 @@ function App() {
       <header className="header">
         <h1>🏥 Wellness Check</h1>
         <p className="tagline">Sharing wellness, not surveillance</p>
-        <ThemeButton onClick={() => setShowSettings(true)} />
+        <div className="header-buttons">
+          {view !== 'home' && notificationPermission !== 'granted' && (
+            <button 
+              className="notification-btn"
+              onClick={requestNotificationPermission}
+              title="Enable notifications for appointment reminders"
+            >
+              🔔 Enable Notifications
+            </button>
+          )}
+          <ThemeButton onClick={() => setShowSettings(true)} />
+        </div>
       </header>
 
       {showSettings && (
@@ -310,65 +373,101 @@ function App() {
               <h3>Push Notifications</h3>
               <p>Get alerts when wellness scores change</p>
             </div>
+            <div className="feature">
+              <span className="icon">💊</span>
+              <h3>Medication Reminders</h3>
+              <p>Track medications with adherence reporting</p>
+            </div>
+            <div className="feature">
+              <span className="icon">📈</span>
+              <h3>Weekly Reports</h3>
+              <p>Comprehensive wellness summaries</p>
+            </div>
           </div>
         </main>
       )}
 
       {view === 'senior' && user && (
-        <main className="senior-view">
-          <button className="back-btn" onClick={() => { setView('home'); setUser(null); disconnectSocket(); }}>
+        <main className="senior-view main-with-nav">
+          <Notifications userId={user.id} onMarkAsRead={(id) => console.log('Marked as read:', id)} />
+
+          {navSection === 'home' && (
+            <>
+              <div className="wellness-card">
+                <h2>Your Wellness Score</h2>
+                <div className="score-display">
+                  <div className={`score ${getScoreColor(wellnessScore?.score)}`}>
+                    {wellnessScore?.score || '—'}
+                  </div>
+                  <p className="score-label">out of 100</p>
+                </div>
+              </div>
+
+              <div className="checkin-section">
+                <h3>Quick Check-In</h3>
+                <button className="btn btn-primary btn-large" onClick={checkIn} disabled={loading} aria-label="Check in to let family know you're okay">
+                  ✅ I'm Okay!
+                </button>
+              </div>
+
+              <div className="activity-section">
+                <h3>Record Activity (Demo)</h3>
+                <p className="hint">In the real app, these would be tracked automatically</p>
+                <div className="activity-buttons">
+                  <button onClick={() => recordActivity('motion')} disabled={loading} aria-label="Record motion activity">🚶 Motion</button>
+                  <button onClick={() => recordActivity('location')} disabled={loading} aria-label="Record location activity">📍 Location</button>
+                  <button onClick={() => recordActivity('screen')} disabled={loading} aria-label="Record screen activity">📱 Screen</button>
+                  <button onClick={() => recordActivity('charging')} disabled={loading} aria-label="Record charging activity">🔌 Charging</button>
+                </div>
+              </div>
+
+              <div className="recent-activity">
+                <h3>Recent Activity</h3>
+                {activities.length === 0 ? (
+                  <p className="empty">No activity recorded yet</p>
+                ) : (
+                  <ul className="activity-list">
+                    {activities.map(a => (
+                      <li key={a.id}>
+                        <span className="type">{a.type}</span>
+                        <span className="time">{formatTime(a.timestamp)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
+          )}
+
+          {navSection === 'meds' && (
+            <MedicationsTab userId={user.id} />
+          )}
+
+          {navSection === 'appointments' && (
+            <DoctorVisits userId={user.id} />
+          )}
+
+          {navSection === 'report' && (
+            <div className="report-section">
+              <WeeklyReport seniorId={user.id} />
+            </div>
+          )}
+
+          <BottomNav
+            items={[
+              { id: 'home', label: 'Home', icon: '🏠', onClick: () => setNavSection('home') },
+              { id: 'meds', label: 'Meds', icon: '💊', onClick: () => setNavSection('meds') },
+              { id: 'appointments', label: 'Appts', icon: '📅', onClick: () => setNavSection('appointments') },
+              { id: 'report', label: 'Report', icon: '📊', onClick: () => setNavSection('report') },
+            ]}
+            activeId={navSection}
+          />
+
+          <button className="back-btn floating-back" onClick={() => { setView('home'); setUser(null); disconnectSocket(); }} aria-label="Go back to home screen">
             ← Back
           </button>
 
-          <div className="wellness-card">
-            <h2>Your Wellness Score</h2>
-            <div className="score-display">
-              <div className={`score ${getScoreColor(wellnessScore?.score)}`}>
-                {wellnessScore?.score || '—'}
-              </div>
-              <p className="score-label">out of 100</p>
-            </div>
-          </div>
-
-          <div className="checkin-section">
-            <h3>Quick Check-In</h3>
-            <button className="btn btn-primary btn-large" onClick={checkIn} disabled={loading}>
-              ✅ I'm Okay!
-            </button>
-          </div>
-
-          <div className="activity-section">
-            <h3>Record Activity (Demo)</h3>
-            <p className="hint">In the real app, these would be tracked automatically</p>
-            <div className="activity-buttons">
-              <button onClick={() => recordActivity('motion')} disabled={loading}>🚶 Motion</button>
-              <button onClick={() => recordActivity('location')} disabled={loading}>📍 Location</button>
-              <button onClick={() => recordActivity('screen')} disabled={loading}>📱 Screen</button>
-              <button onClick={() => recordActivity('charging')} disabled={loading}>🔌 Charging</button>
-            </div>
-          </div>
-
-          <MedicationsTab userId={user.id} />
-
-          <div className="recent-activity">
-            <h3>Recent Activity</h3>
-            {activities.length === 0 ? (
-              <p className="empty">No activity recorded yet</p>
-            ) : (
-              <ul className="activity-list">
-                {activities.map(a => (
-                  <li key={a.id}>
-                    <span className="type">{a.type}</span>
-                    <span className="time">{formatTime(a.timestamp)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="privacy-note">
-            <p>🔒 You control what's shared. Family can see your wellness score and check-ins.</p>
-          </div>
+          <p className="privacy-note">🔒 You control what's shared. Family can see your wellness score and check-ins.</p>
         </main>
       )}
 
@@ -405,6 +504,9 @@ function App() {
             </button>
             <button className={`tab-btn ${activeTab === 'alerts' ? 'active' : ''}`} onClick={() => setActiveTab('alerts')}>
               Alerts
+            </button>
+            <button className={`tab-btn ${activeTab === 'report' ? 'active' : ''}`} onClick={() => setActiveTab('report')}>
+              Weekly Report
             </button>
           </div>
 
@@ -445,6 +547,12 @@ function App() {
                   <span className="status-text">No alerts</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'report' && (
+            <div className="report-section">
+              <WeeklyReport seniorId="senior-demo-1" />
             </div>
           )}
 

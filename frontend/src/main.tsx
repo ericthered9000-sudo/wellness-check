@@ -5,9 +5,11 @@ import App from './App.tsx'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
-  </StrictMode>,
+ <StrictMode>
+ <ThemeProvider>
+ <App />
+ </ThemeProvider>
+ </StrictMode>,
 )
+
+// Service worker registration is handled by vite-plugin-pwa
