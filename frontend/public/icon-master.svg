@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg)"/>
+  
+  <!-- Heart shape -->
+  <path d="M256 400c-8 0-16-3-22-9l-100-90c-30-27-45-66-40-105 4-31 24-58 52-71 22-10 46-8 66 5l44 30 44-30c20-13 44-15 66-5 28 13 48 40 52 71 5 39-10 78-40 105l-100 90c-6 6-14 9-22 9z" fill="#fff" opacity="0.95"/>
+  
+  <!-- Checkmark -->
+  <path d="M210 256l30 30 60-60" stroke="#4F46E5" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Pulse line -->
+  <path d="M160 340h40l20-50 20 100 20-100 20 50h50" stroke="#7C3AED" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/>
+</svg>
