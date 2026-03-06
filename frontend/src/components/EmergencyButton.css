@@ -1,0 +1,116 @@
+.emergency-button {
+  width: 100%;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.emergency-button:hover {
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+}
+
+.emergency-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.emergency-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.emergency-text {
+  font-size: 1.3rem;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.emergency-subtext {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.emergency-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.8);
+  transition: width 0.05s linear;
+}
+
+/* Dark mode / theme support */
+[data-theme="dark"] .emergency-button {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+[data-theme="calm"] .emergency-button {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+}
+
+/* High contrast for accessibility */
+.high-contrast .emergency-button {
+  border: 3px solid white;
+  background: #dc2626;
+}
+
+/* Emergency Modal */
+.emergency-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.emergency-modal-content {
+  background-color: var(--surface, #fff);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+
+.emergency-modal-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.btn-danger {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+.btn-danger:active {
+  background-color: #991b1b;
+}

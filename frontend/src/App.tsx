@@ -12,6 +12,7 @@ import { PrivacyModal } from './components/PrivacyModal'
 import { TermsModal } from './components/TermsModal'
 import { DeleteDataButton } from './components/DeleteDataButton'
 import { OfflineIndicator } from './components/OfflineIndicator'
+import { EmergencyButton } from './components/EmergencyButton'
 import './components/OfflineIndicator.css'
 import './components/DisclaimerModal.css'
 import './components/PrivacyModal.css'
@@ -24,6 +25,7 @@ import './components/WeeklyReport.css'
 import './components/DoctorVisits.css'
 import './components/Notifications.css'
 import './components/BottomNav.css'
+import './components/EmergencyButton.css'
 import './App.css'
 
 
@@ -459,6 +461,10 @@ function App() {
                 <button className="btn btn-primary btn-large" onClick={checkIn} disabled={loading} aria-label="Check in to let family know you're okay">
                   ✅ I'm Okay!
                 </button>
+              </div>
+
+              <div className="emergency-section" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                <EmergencyButton />
               </div>
 
               <div className="activity-section">
