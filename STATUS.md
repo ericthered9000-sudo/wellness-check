@@ -1,11 +1,40 @@
 # Wellness Check MVP - Project Status
 
-**Last Updated:** 2026-02-28  
-**Status:** Phase 3 Complete ✅
+**Last Updated:** 2026-03-06  
+**Status:** Ready for Play Store Submission (pending Android SDK)
 
 ## Completed Features
 
-### Phase 3 Features (Just Completed)
+### Google Play Store Preparation (2026-03-06)
+
+1. **Emergency 911 Button** ✅
+   - Hold 2 seconds to trigger
+   - Confirmation modal before dialing
+   - Senior-friendly design
+
+2. **Capacitor Android Setup** ✅
+   - App ID: com.wellnesscheck.app
+   - AndroidManifest configured with notifications permission
+   - Icons generated for all densities (mdpi-xxxhdpi)
+   - Play Store icon (512x512)
+   - Feature graphic (1024x500)
+
+3. **Store Listing Content** ✅
+   - Privacy Policy page (public/privacy.html)
+   - Terms of Service page (public/terms.html)
+   - Support/FAQ page (public/support.html)
+   - Store descriptions and keywords
+   - Marketing plan (docs/MARKETING-PLAN.md)
+
+4. **Screenshots** ✅
+   - Home/landing page
+   - Senior view (wellness score + check-in)
+   - Emergency button
+   - Medication reminders
+   - Weekly report
+   - Family dashboard view
+
+### Phase 3 Features
 
 1. **Weekly Wellness Reports** ✅
    - Endpoint: GET /api/reports/weekly/:userId
@@ -19,13 +48,7 @@
    - Role-based permission checks in API
    - Invite family with role selection
 
-3. **Frontend Updates** ✅
-   - WeeklyReport.tsx component
-   - Display cards for all metrics
-   - Color-coded scores
-   - Refresh button
-
-### Phase 2 Features (Previously Complete)
+### Phase 2 Features
 
 - WebSocket real-time updates
 - Push notifications
@@ -33,54 +56,44 @@
 - Enhanced family dashboard
 - Medication reminders
 
-## Running Services
+## Build Status
 
-| Service | URL | Status |
-|---------|-----|--------|
-| Backend API | http://localhost:3001 | ✅ Running |
-| Frontend UI | http://localhost:5173 | ✅ Running |
-| Health Check | http://localhost:3001/health | ✅ Passing |
-| WebSocket | ws://localhost:3001 | ✅ Running |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Frontend Build | ✅ Working | `npm run build` successful |
+| Backend Build | ✅ Working | TypeScript compiled |
+| Capacitor Sync | ✅ Working | `npx cap sync android` |
+| APK Build | ❌ Blocked | Need Android SDK |
+| Java 17 | ✅ Installed | |
+| ImageMagick | ✅ Installed | For icon generation |
 
-## API Endpoints
+## Screenshots Location
 
-### Weekly Reports (NEW)
-- GET /api/reports/weekly/:userId - Get weekly wellness report
-- GET /api/reports/weekly/:userId/all - Get all weekly reports
-- POST /api/reports/weekly/:userId/generate - Generate new report
-
-### Family Connections (UPDATED)
-- POST /api/connections - Create connection with role (default: 'viewer')
-- GET /api/connections/family/:familyMemberId - Get family connections with roles
-- POST /api/connections/:id/role - Update connection role
-
-See PROJECTS.md for all endpoints.
-
-## Phase 3 Build Results
-
-### Backend
-- TypeScript compilation: ✅ Successful
-- Reports service: ✅ Working
-- Permission middleware: ✅ Working
-- Database schema: ✅ Updated
-
-### Frontend
-- Build: ✅ Successful
-- WeeklyReport component: ✅ Working
-- Role display: ✅ Working
-
-### Tested Endpoints
-- GET /health → ✅ OK
-- GET /api/reports/weekly/:userId → ✅ Returns report with metrics
-- POST /api/connections → ✅ Creates connection with role
-- GET /api/connections/family/:id → ✅ Returns connections with roles
+`frontend/play-store/`
+- screenshot-home.png
+- screenshot-senior-main.png
+- screenshot-senior-bottom.png
+- screenshot-emergency.png
+- screenshot-medications.png
+- screenshot-report.png
+- screenshot-family.png
 
 ## Next Steps
 
-- Implement web-push for actual notifications
-- Generate actual app icons for PWA
-- Add wellness trend charts
-- Implement check-in history
-- Add privacy settings UI
+### Immediate (Android SDK Required)
+1. Install Android SDK command-line tools
+2. Set ANDROID_HOME environment variable
+3. Run `sdkmanager --licenses`
+4. Install platforms;android-34, build-tools;34.0.0
+5. Build APK: `cd frontend/android && ./gradlew assembleDebug`
 
-*Built by Bob - subagent for Wellness Check MVP*
+### Then
+1. Install APK on phone
+2. Take phone screenshots for Play Store
+3. Create Google Play Developer account ($25)
+4. Submit to Play Console
+
+## Known Issues
+
+- Node.js v25.8.0 compatibility with better-sqlite3 (fixed with rebuild)
+- Browser screenshots work, need real phone screenshots for store listing
