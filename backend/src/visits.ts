@@ -1,5 +1,5 @@
 // Doctor Visit Service
-import Database from 'better-sqlite3';
+import Database, { Database as DatabaseType } from 'better-sqlite3';
 
 export interface DoctorVisit {
   id: string;
@@ -25,9 +25,9 @@ export interface VisitReminder {
   sent_at?: string;
 }
 
-let db: Database;
+let db: DatabaseType;
 
-export function initVisits(database: Database) {
+export function initVisits(database: DatabaseType) {
   db = database;
   
   // Create visits table
