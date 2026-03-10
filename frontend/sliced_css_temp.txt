@@ -1,0 +1,64 @@
+/* Theme button at bottom - above privacy note */
+.bottom-theme-btn {
+  text-align: center;
+  margin: 16px 0;
+}
+
+.bottom-theme-btn button {
+  display: inline-block;
+}
+
+/* Theme Picker Modal */
+.theme-picker-overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.theme-picker-modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slide-up 0.3s ease;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.theme-picker-close {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  border: none;
+  padding: 12px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Notifications container - below check-in, above emergency */
+.notifications-container {
+  margin: 16px 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.notifications-panel {
+  margin: 0;
+  max-width: none;
+}

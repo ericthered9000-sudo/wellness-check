@@ -548,6 +548,101 @@ main {
   border: 3px solid white;
 }
 
+/* === Senior View Centering === */
+.senior-view {
+  text-align: center;
+}
+
+.senior-view .wellness-card,
+.senior-view .checkin-section,
+.senior-view .activity-section,
+.senior-view .recent-activity,
+.senior-view .report-section {
+  text-align: center;
+}
+
+.senior-view .activity-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  align-items: center;
+}
+
+.senior-view .activity-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === Settings Modal - Centered Popup === */
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal-backdrop);
+  padding: 20px;
+}
+
+.settings-content {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+/* === Legal and Data at Bottom === */
+.legal-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.legal-section h3 {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.legal-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 8px;
+}
+
+.legal-btn:hover {
+  color: var(--text);
+}
+
+.delete-data-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
 /* === Dark Mode Support === */
 [data-theme="night"] .modal-content,
 [data-theme="night"] .settings-content {

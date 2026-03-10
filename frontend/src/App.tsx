@@ -335,35 +335,11 @@ function App() {
  {showSettings && (
  <div className="settings-modal" onClick={() => setShowSettings(false)}>
  <div className="settings-content" onClick={e => e.stopPropagation()}>
- <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Settings</h2>
- <ThemePicker onClose={() => setShowSettings(false)} />
- 
- <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color, #eee)', paddingTop: '1rem' }}>
- <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Legal</h3>
- <button 
- className="link-btn" 
- onClick={() => { setShowPrivacy(true); setShowSettings(false); }}
- style={{ background: 'none', border: 'none', color: 'var(--primary-color, #007bff)', cursor: 'pointer', padding: '0.5rem 0', textAlign: 'left', width: '100%' }}
- >
- Privacy Policy
- </button>
- <button 
- className="link-btn" 
- onClick={() => { setShowTerms(true); setShowSettings(false); }}
- style={{ background: 'none', border: 'none', color: 'var(--primary-color, #007bff)', cursor: 'pointer', padding: '0.5rem 0', textAlign: 'left', width: '100%' }}
- >
- Terms of Service
- </button>
- <button 
- className="link-btn" 
- onClick={() => { resetDisclaimer(); setShowSettings(false); }}
- style={{ background: 'none', border: 'none', color: 'var(--primary-color, #007bff)', cursor: 'pointer', padding: '0.5rem 0', textAlign: 'left', width: '100%' }}
- >
- View Medical Disclaimer
- </button>
+ <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+ <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: '1.25rem' }}>🎨 Customize Your Experience</h2>
+ <button onClick={() => setShowSettings(false)} style={{ background: 'none', border: 'none', fontSize: '28px', color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}>×</button>
  </div>
- 
- <DeleteDataButton onDelete={async () => { localStorage.clear(); window.location.reload(); }} />
+ <ThemePicker onClose={() => setShowSettings(false)} />
  </div>
  </div>
  )}
@@ -525,6 +501,20 @@ function App() {
           </div>
 
           <p className="privacy-note">🔒 You control what's shared. Family can see your wellness score and check-ins.</p>
+
+          <div className="legal-section">
+            <h3>Legal</h3>
+            <div className="legal-links">
+              <button onClick={() => setShowPrivacy(true)} className="legal-btn">Privacy Policy</button>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <button onClick={() => setShowTerms(true)} className="legal-btn">Terms of Service</button>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <button onClick={() => resetDisclaimer()} className="legal-btn">Disclaimer</button>
+            </div>
+            <div className="delete-data-section">
+              <DeleteDataButton onDelete={async () => { localStorage.clear(); window.location.reload(); }} />
+            </div>
+          </div>
         </main>
       )}
 
