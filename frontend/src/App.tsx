@@ -335,10 +335,6 @@ function App() {
  {showSettings && (
  <div className="settings-modal" onClick={() => setShowSettings(false)}>
  <div className="settings-content" onClick={e => e.stopPropagation()}>
- <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
- <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: '1.25rem' }}>🎨 Customize Your Experience</h2>
- <button onClick={() => setShowSettings(false)} style={{ background: 'none', border: 'none', fontSize: '28px', color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}>×</button>
- </div>
  <ThemePicker onClose={() => setShowSettings(false)} />
  </div>
  </div>
