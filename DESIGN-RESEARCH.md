@@ -1,4 +1,4 @@
-# Design Research - Wellness Check App
+# Design Research - HomeBeacon App
 
 **Research Date:** 2026-02-28  
 **Goal:** Create the best-looking, easiest-to-use wellness app for elderly users
@@ -96,7 +96,7 @@
 
 ## Color Palette Recommendations
 
-### Current Wellness Check Themes
+### Current HomeBeacon Themes
 The app already has 6 themes - good variety!
 
 ### Recommended Enhancements
@@ -115,7 +115,7 @@ The app already has 6 themes - good variety!
 
 ---
 
-## Specific Recommendations for Wellness Check
+## Specific Recommendations for HomeBeacon
 
 ### Layout Improvements
 
@@ -281,7 +281,7 @@ For reference, see:
 
 ## Conclusion
 
-The Wellness Check app has a strong foundation with:
+The HomeBeacon app has a strong foundation with:
 - Solid theme system
 - Clean, simple layout
 - Good accessibility options

@@ -1,4 +1,4 @@
-# Wellness Check — Priority Tasks
+# HomeBeacon — Priority Tasks
 
 Tasks ordered by priority. Build these into the app NOW to avoid refactoring later.
 

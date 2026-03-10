@@ -1,10 +1,10 @@
-# Wellness Check - Google Play Store Listing
+# HomeBeacon - Google Play Store Listing
 
 ## App Details
 
-**App Name:** Wellness Check
+**App Name:** HomeBeacon
 
-**Package ID:** com.wellnesscheck.app
+**Package ID:** com.homebeacon.app
 
 **Category:** Health & Fitness
 
@@ -21,7 +21,7 @@ Daily wellness check-in app for seniors and their families to stay connected.
 ## Full Description (4000 characters max)
 
 ```
-Wellness Check helps seniors stay independent while keeping their families connected and informed about their wellbeing.
+HomeBeacon helps seniors stay independent while keeping their families connected and informed about their wellbeing.
 
 🎯 SIMPLE CHECK-INS
 One tap lets family know you're okay. No complicated menus or confusing interfaces.
@@ -97,7 +97,7 @@ Take screenshots of:
 ## Feature Graphic (1024x500 px)
 
 **Text for banner:**
-- Main: "Wellness Check"
+- Main: "HomeBeacon"
 - Tagline: "Stay Connected, Stay Independent"
 - Icon: Heart + checkmark graphic
 
@@ -105,13 +105,13 @@ Take screenshots of:
 
 ## Privacy Policy URL
 
-Host at: https://wellness-check.vercel.app/privacy
+Host at: https://homebeacon.vercel.app/privacy
 
 ---
 
 ## Support URL
 
-Host at: https://wellness-check.vercel.app/support
+Host at: https://homebeacon.vercel.app/support
 
 ---
 

@@ -5,7 +5,6 @@ import { ThemePicker, ThemeButton } from './components/ThemePicker'
 import { MedicationsTab } from './components/MedicationsTab'
 import { WeeklyReport } from './components/WeeklyReport'
 import { DoctorVisits } from './components/DoctorVisits'
-import { Notifications } from './components/Notifications'
 import { BottomNav } from './components/BottomNav'
 import { DisclaimerModal, useDisclaimerAccepted } from './components/DisclaimerModal'
 import { PrivacyModal } from './components/PrivacyModal'
@@ -330,7 +329,6 @@ function App() {
               🔔 Enable Notifications
             </button>
           )}
-          <ThemeButton onClick={() => setShowSettings(true)} />
         </div>
       </header>
 
@@ -442,10 +440,12 @@ function App() {
 
       {view === 'senior' && user && (
         <main className="senior-view main-with-nav">
-          <Notifications userId={user.id} onMarkAsRead={(id) => console.log('Marked as read:', id)} />
-
           {navSection === 'home' && (
             <>
+              <div className="emergency-section" style={{ marginTop: '0.5rem', marginBottom: '1rem', position: 'sticky', top: '0', zIndex: '10' }}>
+                <EmergencyButton />
+              </div>
+
               <div className="wellness-card">
                 <h2>Your Wellness Score</h2>
                 <div className="score-display">
@@ -461,10 +461,6 @@ function App() {
                 <button className="btn btn-primary btn-large" onClick={checkIn} disabled={loading} aria-label="Check in to let family know you're okay">
                   ✅ I'm Okay!
                 </button>
-              </div>
-
-              <div className="emergency-section" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                <EmergencyButton />
               </div>
 
               <div className="activity-section">
@@ -523,6 +519,10 @@ function App() {
           <button className="back-btn floating-back" onClick={() => { setView('home'); setUser(null); disconnectSocket(); }} aria-label="Go back to home screen">
             ← Back
           </button>
+
+          <div className="bottom-theme-btn">
+            <ThemeButton onClick={() => setShowSettings(true)} />
+          </div>
 
           <p className="privacy-note">🔒 You control what's shared. Family can see your wellness score and check-ins.</p>
         </main>

@@ -1,7 +1,7 @@
 # Google Fit Integration Guide
 
 **Research Date:** 2026-02-28
-**Purpose:** Integrate Google Fit health data into Wellness Check app
+**Purpose:** Integrate Google Fit health data into HomeBeacon app
 
 **Status:** 🟡 In Progress - Schema and service created, needs OAuth testing
 

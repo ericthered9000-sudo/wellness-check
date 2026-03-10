@@ -1,4 +1,4 @@
-# Wellness Check - Features & Themes Research
+# HomeBeacon - Features & Themes Research
 
 **Research Date:** 2026-02-28
 **Purpose:** Additional features and visual themes for the app

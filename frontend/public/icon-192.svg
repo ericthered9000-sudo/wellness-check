@@ -1,4 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
-  <rect width="192" height="192" rx="32" fill="#4f46e5"/>
-  <text x="96" y="130" font-size="100" text-anchor="middle" fill="white">🏥</text>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5"/>
+      <stop offset="100%" style="stop-color:#6366f1"/>
+    </linearGradient>
+    <linearGradient id="beacon" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="192" height="192" rx="32" fill="url(#bg)"/>
+  
+  <!-- House -->
+  <path d="M96 45 L40 95 L40 145 L70 145 L70 115 L122 115 L122 145 L152 145 L152 95 Z" fill="white" opacity="0.95"/>
+  
+  <!-- Roof -->
+  <path d="M96 30 L30 90 L96 90 L162 90 Z" fill="white"/>
+  
+  <!-- Beacon glow -->
+  <circle cx="96" cy="55" r="18" fill="url(#beacon)"/>
+  
+  <!-- Beacon rays -->
+  <path d="M96 25 L96 15" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+  <path d="M75 35 L68 28" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <path d="M117 35 L124 28" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  
+  <!-- Door -->
+  <rect x="85" y="115" width="22" height="30" rx="2" fill="#4f46e5" opacity="0.3"/>
 </svg>

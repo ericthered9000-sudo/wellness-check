@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <defs>
+    <linearGradient id="letterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FD79A8"/>
+      <stop offset="100%" style="stop-color:#E84393"/>
+    </linearGradient>
+  </defs>
+  <circle cx="54" cy="54" r="48" fill="url(#letterGrad)"/>
+  <!-- Letter H stylized -->
+  <text x="54" y="72" font-family="Arial, sans-serif" font-size="56" font-weight="bold" fill="white" text-anchor="middle">H</text>
+  <!-- Small beacon dot -->
+  <circle cx="78" cy="30" r="8" fill="white"/>
+  <circle cx="78" cy="30" r="4" fill="#E84393"/>
+</svg>

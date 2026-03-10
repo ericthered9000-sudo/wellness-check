@@ -1,6 +1,6 @@
-# Wellness Check - MVP Project
+# HomeBeacon - MVP Project
 
-**Working Name:** Wellness Check (placeholder — will need better branding)
+**Working Name:** HomeBeacon (placeholder — will need better branding)
 **Tagline:** "Sharing wellness, not surveillance"
 **Created:** 2026-02-28
 

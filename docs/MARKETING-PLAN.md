@@ -1,4 +1,4 @@
-# Wellness Check - Marketing Plan
+# HomeBeacon - Marketing Plan
 
 ## App Overview
 - **Target Users:** Seniors (primary) + Family Caregivers (secondary)
@@ -18,8 +18,8 @@
 - Long-tail: "check in on elderly parent", "senior health tracking"
 
 **Title Optimization:**
-- Current: "Wellness Check"
-- Consider: "Wellness Check - Senior Care & Family Check-In" (fits more keywords)
+- Current: "HomeBeacon"
+- Consider: "HomeBeacon - Senior Care & Family Check-In" (fits more keywords)
 
 **Description Strategy:**
 - First 80 chars: Hook + main keyword
@@ -50,7 +50,7 @@
 - End with: "Free to download. Privacy-first."
 
 **Social Media Profiles**
-- Facebook Page: "Wellness Check App"
+- Facebook Page: "HomeBeacon App"
 - Twitter/X: @WellnessCheckApp
 - Instagram: @wellnesscheckapp
 - TikTok: @wellnesscheckapp (for caregiver tips)
@@ -75,7 +75,7 @@
 
 **Google Play Review Strategy:**
 - In-app prompt after 3rd successful check-in
-- "Enjoying Wellness Check? Leave a review!"
+- "Enjoying HomeBeacon? Leave a review!"
 - Never ask for 5-star, just ask for review
 - Timing: After positive experience
 
@@ -161,7 +161,7 @@
 **Potential Ad Copy:**
 ```
 Headline: "Mom lives alone. You worry."
-Body: "Wellness Check lets her tap 'I'm Okay' - and you get peace of mind. Free app. Privacy-first. No tracking."
+Body: "HomeBeacon lets her tap 'I'm Okay' - and you get peace of mind. Free app. Privacy-first. No tracking."
 CTA: "Download Free"
 ```
 
@@ -174,7 +174,7 @@ CTA: "Download Free"
 - Geriatric care managers on social media
 
 **Outreach Template:**
-"Hi [Name], I created Wellness Check - a free app that lets seniors check in with family. Would you be interested in trying it? Happy to provide talking points or do a joint video. [Your app link]"
+"Hi [Name], I created HomeBeacon - a free app that lets seniors check in with family. Would you be interested in trying it? Happy to provide talking points or do a joint video. [Your app link]"
 
 ---
 
@@ -202,7 +202,7 @@ CTA: "Download Free"
 - Easy share via text/SMS (seniors use SMS)
 
 **Referral Copy:**
-"I've been using Wellness Check to stay connected with family. It's free and simple - just tap 'I'm Okay!' and your family sees you're doing well. [Download link]"
+"I've been using HomeBeacon to stay connected with family. It's free and simple - just tap 'I'm Okay!' and your family sees you're doing well. [Download link]"
 
 ---
 
@@ -227,7 +227,7 @@ CTA: "Download Free"
 - Caregiver magazines
 
 **Pitch Angle:**
-"Built by a 51-year-old Walmart worker learning to code - Wellness Check helps seniors stay independent while keeping families connected. No tracking. No surveillance. Just simple check-ins."
+"Built by a 51-year-old Walmart worker learning to code - HomeBeacon helps seniors stay independent while keeping families connected. No tracking. No surveillance. Just simple check-ins."
 
 ### 5.2 App Store Features
 
@@ -257,7 +257,7 @@ CTA: "Download Free"
 
 ## Competitive Positioning
 
-| Feature | Wellness Check | Life360 | CarePredict |
+| Feature | HomeBeacon | Life360 | CarePredict |
 |---------|---------------|---------|-------------|
 | Price | Free | Freemium | $50+/mo |
 | Privacy | Full control | Location tracking | Wearable required |
@@ -314,7 +314,7 @@ CTA: "Download Free"
 ## Success Stories to Collect
 
 **Ask early users for testimonials:**
-- "Wellness Check gives me peace of mind knowing Mom is okay." - Daughter, 45
+- "HomeBeacon gives me peace of mind knowing Mom is okay." - Daughter, 45
 - "I love that I just tap one button and my family knows I'm fine." - Senior user, 78
 - "Finally, an app my dad can actually use." - Son, 52
 

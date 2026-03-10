@@ -1,7 +1,7 @@
-# Competitive Research: Wellness Check Market
+# Competitive Research: HomeBeacon Market
 
 **Research Date:** 2026-02-28
-**Prepared for:** James (Wellness Check MVP)
+**Prepared for:** James (HomeBeacon MVP)
 
 ---
 

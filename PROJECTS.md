@@ -1,6 +1,6 @@
-# Wellness Check Projects
+# HomeBeacon Projects
 
-This directory contains the Wellness Check application for elderly wellness monitoring.
+This directory contains the HomeBeacon application for elderly wellness monitoring.
 
 ## Project Structure
 
@@ -15,7 +15,7 @@ wellness-check/
 
 ## Current Projects
 
-### Wellness Check (Active)
+### HomeBeacon (Active)
 
 **Status:** Phase 3 Complete ✅
 

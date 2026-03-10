@@ -1,4 +1,4 @@
-# Wellness Check — Quick Reference
+# HomeBeacon — Quick Reference
 
 ## Before You Write Another Line of Code
 

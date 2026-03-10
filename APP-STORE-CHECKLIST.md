@@ -1,4 +1,4 @@
-# Wellness Check — App Store Submission Checklist
+# HomeBeacon — App Store Submission Checklist
 
 Track progress toward Google Play and Apple App Store submission.
 

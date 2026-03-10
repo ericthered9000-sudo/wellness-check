@@ -1,4 +1,4 @@
-# Terms of Service for Wellness Check
+# Terms of Service for HomeBeacon
 
 *Last updated: March 2026*
 
@@ -6,13 +6,13 @@
 
 ## Agreement to Terms
 
-By using Wellness Check ("the App"), you agree to these Terms of Service. If you do not agree, please do not use the App.
+By using HomeBeacon ("the App"), you agree to these Terms of Service. If you do not agree, please do not use the App.
 
 ---
 
 ## Description of Service
 
-Wellness Check is a personal wellness tracking application that allows users to:
+HomeBeacon is a personal wellness tracking application that allows users to:
 - Record daily wellness check-ins
 - Track medications and adherence
 - Log activities and doctor visits
@@ -26,7 +26,7 @@ Wellness Check is a personal wellness tracking application that allows users to:
 
 **CRITICAL — READ CAREFULLY**
 
-Wellness Check is **NOT**:
+HomeBeacon is **NOT**:
 - A medical device
 - A medical advice service
 - A diagnostic tool
@@ -82,7 +82,7 @@ You agree to:
 
 ## Intellectual Property
 
-Wellness Check and its original content, features, and functionality are owned by Keystone Apps and are protected by intellectual property laws.
+HomeBeacon and its original content, features, and functionality are owned by Keystone Apps and are protected by intellectual property laws.
 
 **You may not:**
 - Copy, modify, or distribute the app
@@ -167,11 +167,11 @@ If any provision of these Terms is found to be unenforceable, the remaining prov
 
 **Questions about these Terms?**
 
-- Email: support@wellnesscheck.app
+- Email: support@homebeacon.app
 - In-App: Settings > Help > Contact Support
 
 ---
 
-*By using Wellness Check, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.*
+*By using HomeBeacon, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.*
 
 *Terms of Service effective as of March 2026.*

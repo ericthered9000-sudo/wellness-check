@@ -1,4 +1,4 @@
-# Wellness Check MVP - Known Issues
+# HomeBeacon MVP - Known Issues
 
 ## Phase 1 Issues Fixed
 

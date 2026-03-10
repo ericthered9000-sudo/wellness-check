@@ -15,16 +15,6 @@ interface DoctorVisit {
   created_at: string;
 }
 
-interface Notification {
-  id: string;
-  visit_id: string;
-  doctor_name: string;
-  specialty: string;
-  date_time: string;
-  location: string;
-  scheduled_for: string;
-}
-
 interface DoctorVisitsProps {
   userId: string;
 }
@@ -32,7 +22,6 @@ interface DoctorVisitsProps {
 
 export function DoctorVisits({ userId }: DoctorVisitsProps) {
   const [visits, setVisits] = useState<DoctorVisit[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +36,6 @@ export function DoctorVisits({ userId }: DoctorVisitsProps) {
 
   useEffect(() => {
     loadVisits();
-    loadNotifications();
   }, [userId]);
 
   const loadVisits = async () => {
@@ -61,17 +49,6 @@ export function DoctorVisits({ userId }: DoctorVisitsProps) {
       setError('Failed to load visits');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadNotifications = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/visits/notifications/${userId}`);
-      if (!response.ok) throw new Error('Failed to load notifications');
-      const data = await response.json();
-      setNotifications(data);
-    } catch (err) {
-      console.error('Error loading notifications:', err);
     }
   };
 
@@ -111,7 +88,6 @@ export function DoctorVisits({ userId }: DoctorVisitsProps) {
       
       // Reload visits
       loadVisits();
-      loadNotifications();
     } catch (err) {
       console.error('Error creating visit:', err);
       setError('Failed to create visit');
@@ -176,19 +152,6 @@ export function DoctorVisits({ userId }: DoctorVisitsProps) {
 
   return (
     <div className="doctor-visits">
-      {/* Notifications Banner */}
-      {notifications.length > 0 && (
-        <div className="notifications-banner">
-          <h4>🔔 Upcoming Reminders</h4>
-          {notifications.map(n => (
-            <div key={n.id} className="notification-item">
-              <span className="notification-doctor">{n.doctor_name}</span>
-              <span className="notification-date">{formatDate(n.date_time)} at {formatTime(n.date_time)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Header */}
       <div className="visits-header">
         <h3>📅 Doctor Appointments</h3>

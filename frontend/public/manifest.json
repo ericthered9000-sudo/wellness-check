@@ -1,7 +1,7 @@
 {
-  "name": "Wellness Check",
-  "short_name": "Wellness",
-  "description": "Sharing wellness, not surveillance - Monitor elderly loved ones with their consent",
+  "name": "HomeBeacon",
+  "short_name": "HomeBeacon",
+  "description": "A beacon for senior safety - Share wellness with family, not surveillance",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -1,4 +1,4 @@
-# Privacy Policy for Wellness Check
+# Privacy Policy for HomeBeacon
 
 *Last updated: March 2026*
 
@@ -6,7 +6,7 @@
 
 ## Introduction
 
-Wellness Check ("we," "our," or "the App") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, store, and protect your information when you use our wellness tracking application.
+HomeBeacon ("we," "our," or "the App") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, store, and protect your information when you use our wellness tracking application.
 
 **Key Points:**
 - Your data stays on your device
@@ -21,7 +21,7 @@ Wellness Check ("we," "our," or "the App") is committed to protecting your priva
 ### Information You Provide
 | Data Type | Purpose | Stored Where |
 |-----------|---------|--------------|
-| Wellness Check-ins | Track daily wellness scores | Local device only |
+| HomeBeacon Check-ins | Track daily wellness scores | Local device only |
 | Medications | Track medication adherence | Local device only |
 | Activities | Log daily activities | Local device only |
 | Doctor Visits | Track appointments | Local device only |
@@ -98,7 +98,7 @@ We protect your data through:
 
 ## Third-Party Services
 
-Wellness Check currently uses **no third-party analytics, advertising, or tracking services**.
+HomeBeacon currently uses **no third-party analytics, advertising, or tracking services**.
 
 If this changes, we will:
 1. Update this Privacy Policy
@@ -109,7 +109,7 @@ If this changes, we will:
 
 ## Children's Privacy
 
-Wellness Check is not intended for children under 13. We do not knowingly collect data from children under 13.
+HomeBeacon is not intended for children under 13. We do not knowingly collect data from children under 13.
 
 If a child under 13 has used this app, please contact us to delete their data.
 
@@ -117,7 +117,7 @@ If a child under 13 has used this app, please contact us to delete their data.
 
 ## Medical Disclaimer
 
-**Wellness Check is not a medical app.**
+**HomeBeacon is not a medical app.**
 
 - This app does not provide medical advice
 - Wellness scores are for informational purposes only
@@ -128,7 +128,7 @@ If a child under 13 has used this app, please contact us to delete their data.
 
 ## International Users
 
-If you are using Wellness Check from outside the United States:
+If you are using HomeBeacon from outside the United States:
 
 - Your data remains on your device (subject to your local laws)
 - GDPR (EU): Your rights are outlined above
@@ -152,7 +152,7 @@ We may update this Privacy Policy. Changes will be:
 
 **Questions about this Privacy Policy?**
 
-- Email: support@wellnesscheck.app
+- Email: support@homebeacon.app
 - In-App: Settings > Help > Contact Support
 
 ---

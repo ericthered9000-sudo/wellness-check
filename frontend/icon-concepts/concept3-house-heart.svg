@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <defs>
+    <linearGradient id="houseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6C5CE7"/>
+      <stop offset="100%" style="stop-color:#5B4BCF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="54" cy="54" r="48" fill="url(#houseGrad)"/>
+  <!-- House -->
+  <path d="M54 22 L26 44 L26 82 L82 82 L82 44 Z" fill="white"/>
+  <!-- Roof -->
+  <path d="M54 18 L22 44 L86 44 Z" fill="white"/>
+  <!-- Heart in house center -->
+  <path d="M54 52 C46 44 38 50 38 58 C38 66 54 76 54 76 C54 76 70 66 70 58 C70 50 62 44 54 52Z" fill="#6C5CE7"/>
+  <!-- Door -->
+  <rect x="46" y="64" width="16" height="18" fill="#6C5CE7"/>
+</svg>

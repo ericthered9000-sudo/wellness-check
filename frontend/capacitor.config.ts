@@ -1,11 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.wellnesscheck.app',
-  appName: 'Wellness Check',
+  appId: 'com.homebeacon.app',
+  appName: 'HomeBeacon',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    // Load from Vercel URL instead of bundled assets
+    url: 'https://frontend-six-blond-57.vercel.app',
+    androidScheme: 'https',
+    cleartext: true
   },
   plugins: {
     SplashScreen: {
@@ -21,9 +24,9 @@ const config: CapacitorConfig = {
     }
   },
   android: {
-    allowMixedContent: false,
+    allowMixedContent: true,
     captureInput: true,
-    webContentsDebuggingEnabled: false
+    webContentsDebuggingEnabled: true
   }
 };
 

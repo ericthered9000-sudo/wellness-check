@@ -1,14 +1,14 @@
-# Medical Disclaimer for Wellness Check
+# Medical Disclaimer for HomeBeacon
 
 ---
 
-## Notice Before Using Wellness Check
+## Notice Before Using HomeBeacon
 
 **Please read this carefully before using the App.**
 
 ---
 
-### Wellness Check is NOT a Medical App
+### HomeBeacon is NOT a Medical App
 
 This application is designed for **personal wellness tracking only**. It is NOT:
 
@@ -20,7 +20,7 @@ This application is designed for **personal wellness tracking only**. It is NOT:
 
 ---
 
-### What Wellness Check DOES
+### What HomeBeacon DOES
 
 - ✓ Tracks your daily wellness check-ins
 - ✓ Monitors medication reminders
@@ -50,7 +50,7 @@ The wellness score calculated by this app is:
 
 ### No Liability for Health Decisions
 
-Keystone Apps and the creators of Wellness Check are NOT responsible for:
+Keystone Apps and the creators of HomeBeacon are NOT responsible for:
 - Medical decisions you make based on app data
 - Health outcomes related to app usage
 - Delay in seeking professional medical care

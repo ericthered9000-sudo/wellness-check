@@ -1,4 +1,4 @@
-# Wellness Check MVP - Project Status
+# HomeBeacon MVP - Project Status
 
 **Last Updated:** 2026-03-06  
 **Status:** Ready for Play Store Submission (pending Android SDK)

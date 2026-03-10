@@ -10,6 +10,8 @@ import reportsRouter from './routes/reports';
 import visitsRouter from './routes/visits';
 import { initVisits } from './visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
+import authRouter from './routes/auth';
+import { authMiddleware } from './middleware/auth';
 // import healthRouter from './routes/health'; // TODO: Fix fetch import
 
 const app = express();
@@ -42,9 +44,13 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
+    password_hash TEXT,
     role TEXT NOT NULL CHECK(role IN ('senior', 'family')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+  
+  -- Add password_hash column if it doesn't exist (for existing databases)
+  INSERT OR IGNORE INTO pragma_table_info SELECT 'password_hash', 'TEXT', 0, 0, 0 FROM pragma_table_info('users') LIMIT 0;
 
   CREATE TABLE IF NOT EXISTS senior_profiles (
     user_id TEXT PRIMARY KEY,
@@ -212,6 +218,9 @@ app.get('/health', (req, res) => {
 
 // Medication routes
 app.use('/api/medications', medicationsRouter);
+
+// Auth routes
+app.use('/api/auth', authRouter(db));
 
 // Weekly reports routes
 app.use('/api/reports', reportsRouter);

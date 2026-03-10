@@ -163,7 +163,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--primary-dark', colors.primaryDark);
     root.style.setProperty('--secondary', colors.secondary);
     root.style.setProperty('--background', colors.background);
+    root.style.setProperty('--bg', colors.background); // Alias for compatibility
     root.style.setProperty('--surface', colors.surface);
+    root.style.setProperty('--card', colors.surface); // Alias for compatibility
     root.style.setProperty('--text', colors.text);
     root.style.setProperty('--text-muted', colors.textMuted);
     root.style.setProperty('--border', colors.border);
@@ -182,9 +184,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.style.setProperty('--text', '#000000');
       root.style.setProperty('--background', '#ffffff');
       root.style.setProperty('--border', '#000000');
-      root.setAttribute('data-high-contrast', 'true');
+      root.classList.add('high-contrast');
     } else {
-      root.removeAttribute('data-high-contrast');
+      root.classList.remove('high-contrast');
+    }
+
+    // Apply large text class
+    if (textSize === 'large' || textSize === 'xlarge') {
+      root.classList.add('large-text');
+    } else {
+      root.classList.remove('large-text');
     }
 
     // Apply theme name
