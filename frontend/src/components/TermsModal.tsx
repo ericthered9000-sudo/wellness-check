@@ -17,10 +17,10 @@ export function TermsModal({ onClose }: TermsModalProps) {
           <p className="last-updated">Last updated: March 2026</p>
           
           <h3>Agreement to Terms</h3>
-          <p>By using Wellness Check, you agree to these Terms of Service. If you do not agree, please do not use the App.</p>
+          <p>By using HomeBeacon, you agree to these Terms of Service. If you do not agree, please do not use the App.</p>
 
           <h3>Description of Service</h3>
-          <p>Wellness Check is a personal wellness tracking application that allows users to:</p>
+          <p>HomeBeacon is a personal wellness tracking application that allows users to:</p>
           <ul>
             <li>Record daily wellness check-ins</li>
             <li>Track medications and adherence</li>
@@ -31,7 +31,7 @@ export function TermsModal({ onClose }: TermsModalProps) {
 
           <h3>Medical Disclaimer</h3>
           <p><strong>CRITICAL — READ CAREFULLY</strong></p>
-          <p>Wellness Check is <strong>NOT</strong>:</p>
+          <p>HomeBeacon is <strong>NOT</strong>:</p>
           <ul>
             <li>A medical device</li>
             <li>A medical advice service</li>
@@ -81,7 +81,7 @@ export function TermsModal({ onClose }: TermsModalProps) {
           <h3>Contact</h3>
           <p>Questions? Contact us at: <strong>support@wellnesscheck.app</strong></p>
           
-          <p className="agreement-note">By using Wellness Check, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.</p>
+          <p className="agreement-note">By using HomeBeacon, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.</p>
         </div>
       </div>
     </div>

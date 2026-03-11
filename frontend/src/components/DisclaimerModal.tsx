@@ -25,7 +25,7 @@ export function DisclaimerModal({ onAccept, onExit }: DisclaimerModalProps) {
         <h3>Medical Disclaimer</h3>
         
         <div className="disclaimer-content" ref={scrollRef} onScroll={handleScroll}>
-          <h4>Wellness Check is NOT a Medical App</h4>
+          <h4>HomeBeacon is NOT a Medical App</h4>
           <p>This application is designed for <strong>personal wellness tracking only</strong>. It is NOT:</p>
           <ul>
             <li>✗ A medical device</li>
@@ -35,7 +35,7 @@ export function DisclaimerModal({ onAccept, onExit }: DisclaimerModalProps) {
             <li>✗ Intended to diagnose, treat, cure, or prevent any disease</li>
           </ul>
 
-          <h4>What Wellness Check DOES</h4>
+          <h4>What HomeBeacon DOES</h4>
           <ul>
             <li>✓ Tracks your daily wellness check-ins</li>
             <li>✓ Monitors medication reminders</li>
@@ -61,7 +61,7 @@ export function DisclaimerModal({ onAccept, onExit }: DisclaimerModalProps) {
           </ul>
 
           <h4>No Liability</h4>
-          <p>Keystone Apps and the creators of Wellness Check are NOT responsible for:</p>
+          <p>Keystone Apps and the creators of HomeBeacon are NOT responsible for:</p>
           <ul>
             <li>Medical decisions you make based on app data</li>
             <li>Health outcomes related to app usage</li>

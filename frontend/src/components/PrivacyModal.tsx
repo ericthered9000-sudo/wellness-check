@@ -17,7 +17,7 @@ export function PrivacyModal({ onClose }: PrivacyModalProps) {
           <p className="last-updated">Last updated: March 2026</p>
           
           <h3>Introduction</h3>
-          <p>Wellness Check is committed to protecting your privacy. This Privacy Policy explains how we collect, use, store, and protect your information.</p>
+          <p>HomeBeacon is committed to protecting your privacy. This Privacy Policy explains how we collect, use, store, and protect your information.</p>
           
           <div className="key-points">
             <p><strong>Key Points:</strong></p>
@@ -71,13 +71,13 @@ export function PrivacyModal({ onClose }: PrivacyModalProps) {
           </ul>
 
           <h3>Third-Party Services</h3>
-          <p>Wellness Check currently uses <strong>no third-party analytics, advertising, or tracking services</strong>.</p>
+          <p>HomeBeacon currently uses <strong>no third-party analytics, advertising, or tracking services</strong>.</p>
 
           <h3>Children's Privacy</h3>
-          <p>Wellness Check is not intended for children under 13.</p>
+          <p>HomeBeacon is not intended for children under 13.</p>
 
           <h3>Medical Disclaimer</h3>
-          <p>Wellness Check is not a medical app. Wellness scores are for informational purposes only. Always consult healthcare professionals for medical decisions.</p>
+          <p>HomeBeacon is not a medical app. Wellness scores are for informational purposes only. Always consult healthcare professionals for medical decisions.</p>
 
           <h3>Contact</h3>
           <p>Questions? Contact us at: <strong>support@wellnesscheck.app</strong></p>

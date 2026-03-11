@@ -320,7 +320,7 @@ function App() {
     <div className="app">
  <OfflineIndicator />
       <header className="header">
-        <h1>🏥 Wellness Check</h1>
+        <h1>🏠 HomeBeacon</h1>
         <p className="tagline">Sharing wellness, not surveillance</p>
         <div className="header-buttons">
           {view !== 'home' && notificationPermission !== 'granted' && (
@@ -356,7 +356,7 @@ function App() {
         <main className="home">
           <div className="intro">
             <h2>How it works</h2>
-            <p>Wellness Check helps elderly family members share their wellness status with family — on their terms.</p>
+            <p>HomeBeacon helps elderly family members share their wellness status with family — on their terms.</p>
           </div>
 
           <div className="demo-buttons">
