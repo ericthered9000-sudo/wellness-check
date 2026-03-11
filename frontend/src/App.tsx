@@ -67,8 +67,8 @@ function connectSocket(userId: string, role: 'senior' | 'family') {
   if (role === 'senior') {
     socket.emit('join:user', userId);
   } else {
-    const seniorId = 'senior-demo-1';
-    socket.emit('join:family', seniorId);
+    // Family member joins their linked senior's channel
+    socket.emit('join:family', userId);
   }
   
   return socket;
@@ -142,33 +142,35 @@ function App() {
     }
   }, []);
 
+  // Demo user IDs for testing - replace with real auth in production
+  const DEMO_SENIOR_ID = 'senior-demo-1';
+  const DEMO_FAMILY_ID = 'family-demo-1';
+
   const loginAsSenior = async () => {
-    const userId = 'senior-demo-1';
     try {
       await fetch(`${API_URL}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userId, email: 'mom@example.com', role: 'senior' })
+        body: JSON.stringify({ id: DEMO_SENIOR_ID, email: 'senior@example.com', role: 'senior' })
       });
-      setUser({ id: userId, email: 'mom@example.com', role: 'senior' });
+      setUser({ id: DEMO_SENIOR_ID, email: 'senior@example.com', role: 'senior' });
       setView('senior');
-      connectSocket(userId, 'senior');
+      connectSocket(DEMO_SENIOR_ID, 'senior');
     } catch (error) {
       console.error('Login failed:', error);
     }
   };
 
   const loginAsFamily = async () => {
-    const userId = 'family-demo-1';
     try {
       await fetch(`${API_URL}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userId, email: 'child@example.com', role: 'family' })
+        body: JSON.stringify({ id: DEMO_FAMILY_ID, email: 'family@example.com', role: 'family' })
       });
-      setUser({ id: userId, email: 'child@example.com', role: 'family' });
+      setUser({ id: DEMO_FAMILY_ID, email: 'family@example.com', role: 'family' });
       setView('family');
-      connectSocket(userId, 'family');
+      connectSocket(DEMO_FAMILY_ID, 'family');
     } catch (error) {
       console.error('Login failed:', error);
     }
@@ -209,7 +211,8 @@ function App() {
 
   useEffect(() => {
     if (user && (view === 'senior' || view === 'family')) {
-      const seniorId = view === 'senior' ? user.id : 'senior-demo-1';
+      // Family members view the senior they're linked to's data
+      const seniorId = view === 'senior' ? user.id : DEMO_SENIOR_ID;
       
       fetch(`${API_URL}/api/wellness/${seniorId}`).then(r => r.json()).then(wellnessData => {
         setWellnessScore(wellnessData);
@@ -278,7 +281,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          userId: 'senior-demo-1', 
+          userId: DEMO_SENIOR_ID, 
           status: 'pending', 
           message 
         })
@@ -289,7 +292,7 @@ function App() {
       }
       setShowCheckInRequest(false);
       
-      fetch(`${API_URL}/api/alerts/senior-demo-1`)
+      fetch(`${API_URL}/api/alerts/${DEMO_SENIOR_ID}`)
         .then(r => r.json())
         .then(setAlerts)
         .catch(console.error);
@@ -595,7 +598,7 @@ function App() {
 
           {activeTab === 'report' && (
             <div className="report-section">
-              <WeeklyReport seniorId="senior-demo-1" />
+              <WeeklyReport seniorId={user ? user.id : DEMO_SENIOR_ID} />
             </div>
           )}
 
