@@ -663,3 +663,15 @@ main {
     display: none;
   }
 }
+/* Family Connection Section */
+.family-connection-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color, #eee);
+}
+
+.family-connection-section h3 {
+  margin-bottom: 0.75rem;
+  color: var(--primary, #3b82f6);
+  font-size: 1.1rem;
+}

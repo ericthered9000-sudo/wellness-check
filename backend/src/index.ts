@@ -12,6 +12,7 @@ import { initVisits } from './visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
 import authRouter from './routes/auth';
 import { authMiddleware } from './middleware/auth';
+import { setupInviteRoutes } from './routes/invites';
 // import healthRouter from './routes/health'; // TODO: Fix fetch import
 
 const app = express();
@@ -230,6 +231,9 @@ app.use('/api/visits', visitsRouter);
 
 // Initialize visits tables
 initVisits(db as any);
+
+// Invite code routes for family connections
+setupInviteRoutes(db as any);
 
 // Health integration routes (Google Fit, etc.)
 // TODO: Fix node-fetch import

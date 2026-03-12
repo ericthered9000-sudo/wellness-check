@@ -10,6 +10,8 @@ import { DisclaimerModal, useDisclaimerAccepted } from './components/DisclaimerM
 import { PrivacyModal } from './components/PrivacyModal'
 import { TermsModal } from './components/TermsModal'
 import { DeleteDataButton } from './components/DeleteDataButton'
+import { InviteCodeGenerator } from './components/InviteCodeGenerator'
+import { ConnectToSenior } from './components/ConnectToSenior'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { EmergencyButton } from './components/EmergencyButton'
 import './components/OfflineIndicator.css'
@@ -61,16 +63,16 @@ function connectSocket(userId: string, role: 'senior' | 'family') {
   if (socket) {
     socket.disconnect();
   }
-  
+
   socket = io(API_URL);
-  
+
   if (role === 'senior') {
     socket.emit('join:user', userId);
   } else {
     // Family member joins their linked senior's channel
     socket.emit('join:family', userId);
   }
-  
+
   return socket;
 }
 
@@ -95,6 +97,8 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
  const [showPrivacy, setShowPrivacy] = useState(false);
  const [showTerms, setShowTerms] = useState(false);
+ const [showInvite, setShowInvite] = useState(false);
+ const [showConnect, setShowConnect] = useState(false);
  const { accepted: disclaimerAccepted, acceptDisclaimer, resetDisclaimer } = useDisclaimerAccepted();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'default'>('default');
   const checkInMessageRef = useRef<HTMLTextAreaElement>(null);
@@ -108,7 +112,7 @@ function App() {
 
     const permission = await Notification.requestPermission();
     setNotificationPermission(permission);
-    
+
     if (permission === 'granted') {
       // Register for push notifications
       try {
@@ -117,7 +121,7 @@ function App() {
           userVisibleOnly: true,
           applicationServerKey: undefined // Would need VAPID key in production
         });
-        
+
         // Send subscription to server
         await fetch(`${API_URL}/api/notifications/register`, {
           method: 'POST',
@@ -127,7 +131,7 @@ function App() {
             subscription: subscription.toJSON()
           })
         });
-        
+
         console.log('Push notifications enabled!');
       } catch (error) {
         console.error('Failed to register for push notifications:', error);
@@ -213,11 +217,11 @@ function App() {
     if (user && (view === 'senior' || view === 'family')) {
       // Family members view the senior they're linked to's data
       const seniorId = view === 'senior' ? user.id : DEMO_SENIOR_ID;
-      
+
       fetch(`${API_URL}/api/wellness/${seniorId}`).then(r => r.json()).then(wellnessData => {
         setWellnessScore(wellnessData);
       }).catch(console.error);
-      
+
       fetch(`${API_URL}/api/alerts/${seniorId}`)
         .then(r => r.json())
         .then(setAlerts)
@@ -272,26 +276,26 @@ function App() {
 
   const requestCheckIn = async () => {
     if (!user || view !== 'family') return;
-    
+
     const message = checkInMessageRef.current?.value || 'How are you doing?';
     setLoading(true);
-    
+
     try {
       await fetch(`${API_URL}/api/checkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId: DEMO_SENIOR_ID, 
-          status: 'pending', 
-          message 
+        body: JSON.stringify({
+          userId: DEMO_SENIOR_ID,
+          status: 'pending',
+          message
         })
       });
-      
+
       if (checkInMessageRef.current) {
         checkInMessageRef.current.value = '';
       }
       setShowCheckInRequest(false);
-      
+
       fetch(`${API_URL}/api/alerts/${DEMO_SENIOR_ID}`)
         .then(r => r.json())
         .then(setAlerts)
@@ -309,10 +313,10 @@ function App() {
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
@@ -324,7 +328,7 @@ function App() {
         <p className="tagline">Sharing wellness, not surveillance</p>
         <div className="header-buttons">
           {view !== 'home' && notificationPermission !== 'granted' && (
-            <button 
+            <button
               className="notification-btn"
               onClick={requestNotificationPermission}
               title="Enable notifications for appointment reminders"
@@ -342,21 +346,29 @@ function App() {
  </div>
  </div>
  )}
- 
+
+ {showInvite && view === 'senior' && user && (
+ <InviteCodeGenerator seniorId={user.id} onClose={() => setShowInvite(false)} />
+ )}
+
+ {showConnect && view === 'family' && user && (
+ <ConnectToSenior familyMemberId={user.id} onClose={() => setShowConnect(false)} onConnected={() => console.log('Connected!')} />
+ )}
+
  {!disclaimerAccepted && (
- <DisclaimerModal 
- onAccept={acceptDisclaimer} 
- onExit={() => { if(confirm('Are you sure you want to exit?')) { window.close(); } }} 
+ <DisclaimerModal
+ onAccept={acceptDisclaimer}
+ onExit={() => { if(confirm('Are you sure you want to exit?')) { window.close(); } }}
  />
  )}
- 
+
  {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
  {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
       {view === 'home' && (
         <main className="home">
           <div className="intro">
             <h2>How it works</h2>
-            <p>HomeBeacon helps elderly family members share their wellness status with family — on their terms.</p>
+            <p>HomeBeacon helps elderly family members share their wellness status with family - on their terms.</p>
           </div>
 
           <div className="demo-buttons">
@@ -425,7 +437,7 @@ function App() {
                 <h2>Your Wellness Score</h2>
                 <div className="score-display">
                   <div className={`score ${getScoreColor(wellnessScore?.score)}`}>
-                    {wellnessScore?.score || '—'}
+                    {wellnessScore?.score || '-'}
                   </div>
                   <p className="score-label">out of 100</p>
                 </div>
@@ -501,6 +513,14 @@ function App() {
 
           <p className="privacy-note">🔒 You control what's shared. Family can see your wellness score and check-ins.</p>
 
+          <div className="family-connection-section">
+            <h3>Family Connections</h3>
+            <button onClick={() => setShowInvite(true)} className="btn btn-secondary" style={{ width: '100%', marginBottom: '0.75rem' }}>
+              👨‍👩‍👧 Invite Family Members
+            </button>
+            <p className="hint">Share a unique code so family can connect to your wellness updates</p>
+          </div>
+
           <div className="legal-section">
             <h3>Legal</h3>
             <div className="legal-links">
@@ -532,7 +552,7 @@ function App() {
             <h3>Wellness Score</h3>
             <div className="score-display">
               <div className={`score ${getScoreColor(wellnessScore?.score)}`}>
-                {wellnessScore?.score || '—'}
+                {wellnessScore?.score || '-'}
               </div>
               <p className="score-label">out of 100</p>
             </div>
@@ -604,6 +624,9 @@ function App() {
 
           <div className="quick-actions">
             <h3>Quick Actions</h3>
+            <button className="btn btn-secondary" onClick={() => setShowConnect(true)} style={{ width: '100%', marginBottom: '0.75rem' }}>
+              🔗 Connect to Senior
+            </button>
             <button className="btn btn-secondary" onClick={() => setShowCheckInRequest(true)}>
               📩 Request Check-In
             </button>
