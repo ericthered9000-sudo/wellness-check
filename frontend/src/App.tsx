@@ -14,11 +14,13 @@ import { InviteCodeGenerator } from './components/InviteCodeGenerator'
 import { ConnectToSenior } from './components/ConnectToSenior'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { EmergencyButton } from './components/EmergencyButton'
+import { Pricing } from './components/Pricing'
 import './components/OfflineIndicator.css'
 import './components/DisclaimerModal.css'
 import './components/PrivacyModal.css'
 import './components/TermsModal.css'
 import './components/DeleteDataButton.css'
+import './components/Pricing.css'
 import { API_URL } from './config'
 import './components/ThemePicker.css'
 import './components/MedicationsTab.css'
@@ -85,7 +87,7 @@ function disconnectSocket() {
 
 function App() {
   useTheme(); // Initialize theme context
-  const [view, setView] = useState<'home' | 'senior' | 'family'>('home');
+  const [view, setView] = useState<'home' | 'senior' | 'family' | 'pricing'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [wellnessScore, setWellnessScore] = useState<WellnessScore | null>(null);
   const [alerts, setAlerts] = useState<Alert | null>(null);
@@ -364,6 +366,17 @@ function App() {
 
  {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
  {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+      {view === 'pricing' && (
+        <main className="home">
+          <Pricing />
+          <div className="demo-buttons" style={{ marginTop: '2rem' }}>
+            <button className="btn btn-secondary" onClick={() => setView('home')}>
+              ← Back to Home
+            </button>
+          </div>
+        </main>
+      )}
+
       {view === 'home' && (
         <main className="home">
           <div className="intro">
@@ -372,6 +385,9 @@ function App() {
           </div>
 
           <div className="demo-buttons">
+            <button className="btn btn-primary" onClick={() => setView('pricing')}>
+              💰 View Pricing
+            </button>
             <button className="btn btn-senior" onClick={loginAsSenior}>
               👵 Demo as Senior
             </button>

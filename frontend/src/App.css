@@ -76,6 +76,8 @@ html, body {
   margin: 0 auto;
   padding: 20px;
   min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* Center everything in home view */
