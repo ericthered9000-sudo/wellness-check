@@ -15,12 +15,14 @@ import { ConnectToSenior } from './components/ConnectToSenior'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { EmergencyButton } from './components/EmergencyButton'
 import { Pricing } from './components/Pricing'
+import { Login } from './components/Login'
 import './components/OfflineIndicator.css'
 import './components/DisclaimerModal.css'
 import './components/PrivacyModal.css'
 import './components/TermsModal.css'
 import './components/DeleteDataButton.css'
 import './components/Pricing.css'
+import './components/Login.css'
 import { API_URL } from './config'
 import './components/ThemePicker.css'
 import './components/MedicationsTab.css'
@@ -36,6 +38,7 @@ interface User {
   id: string;
   email: string;
   role: 'senior' | 'family';
+  token?: string;
 }
 
 interface ActivityEvent {
@@ -87,7 +90,7 @@ function disconnectSocket() {
 
 function App() {
   useTheme(); // Initialize theme context
-  const [view, setView] = useState<'home' | 'senior' | 'family' | 'pricing'>('home');
+  const [view, setView] = useState<'home' | 'senior' | 'family' | 'pricing' | 'login'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [wellnessScore, setWellnessScore] = useState<WellnessScore | null>(null);
   const [alerts, setAlerts] = useState<Alert | null>(null);
@@ -97,11 +100,12 @@ function App() {
   const [navSection, setNavSection] = useState<'home' | 'meds' | 'appointments' | 'report'>('home');
   const [showCheckInRequest, setShowCheckInRequest] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
- const [showPrivacy, setShowPrivacy] = useState(false);
- const [showTerms, setShowTerms] = useState(false);
- const [showInvite, setShowInvite] = useState(false);
- const [showConnect, setShowConnect] = useState(false);
- const { accepted: disclaimerAccepted, acceptDisclaimer, resetDisclaimer } = useDisclaimerAccepted();
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [showConnect, setShowConnect] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const { accepted: disclaimerAccepted, acceptDisclaimer, resetDisclaimer } = useDisclaimerAccepted();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'default'>('default');
   const checkInMessageRef = useRef<HTMLTextAreaElement>(null);
 
@@ -148,37 +152,88 @@ function App() {
     }
   }, []);
 
-  // Demo user IDs for testing - replace with real auth in production
+  // Demo senior ID for family view fallback
   const DEMO_SENIOR_ID = 'senior-demo-1';
-  const DEMO_FAMILY_ID = 'family-demo-1';
 
-  const loginAsSenior = async () => {
+  // Real authentication - login
+  const handleLogin = async (email: string, password: string) => {
     try {
-      await fetch(`${API_URL}/api/users`, {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: DEMO_SENIOR_ID, email: 'senior@example.com', role: 'senior' })
+        body: JSON.stringify({ email, password })
       });
-      setUser({ id: DEMO_SENIOR_ID, email: 'senior@example.com', role: 'senior' });
-      setView('senior');
-      connectSocket(DEMO_SENIOR_ID, 'senior');
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+       alert(data.error || 'Login failed');
+        return;
+      }
+      
+      setUser({ 
+        id: data.user.id, 
+        email: data.user.email, 
+        role: data.user.role,
+        token: data.token 
+      });
+      
+      // Store token for future requests
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('user_role', data.user.role);
+      
+      // Connect to WebSocket
+      connectSocket(data.user.id, data.user.role);
+      
+      // Navigate to appropriate view
+      setView(data.user.role === 'senior' ? 'senior' : 'family');
+      setShowLogin(false);
+      
+      console.log('Logged in as:', data.user.email, data.user.role);
     } catch (error) {
       console.error('Login failed:', error);
+      alert('Login failed. Please try again.');
     }
   };
 
-  const loginAsFamily = async () => {
+  // Real authentication - register
+  const handleRegister = async (email: string, password: string, role: 'senior' | 'family') => {
     try {
-      await fetch(`${API_URL}/api/users`, {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: DEMO_FAMILY_ID, email: 'family@example.com', role: 'family' })
+        body: JSON.stringify({ email, password, role })
       });
-      setUser({ id: DEMO_FAMILY_ID, email: 'family@example.com', role: 'family' });
-      setView('family');
-      connectSocket(DEMO_FAMILY_ID, 'family');
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        alert(data.error || 'Registration failed');
+        return;
+      }
+      
+      setUser({ 
+        id: data.user.id, 
+        email: data.user.email, 
+        role: data.user.role,
+        token: data.token 
+      });
+      
+      // Store token
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('user_role', data.user.role);
+      
+      // Connect to WebSocket
+      connectSocket(data.user.id, data.user.role);
+      
+      // Navigate to appropriate view
+      setView(data.user.role === 'senior' ? 'senior' : 'family');
+      setShowLogin(false);
+      
+      console.log('Registered as:', data.user.email, data.user.role);
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Registration failed:', error);
+      alert('Registration failed. Please try again.');
     }
   };
 
@@ -364,6 +419,13 @@ function App() {
  />
  )}
 
+ {showLogin && (
+ <div className="login-modal" onClick={() => setShowLogin(false)}>
+ <div className="login-content" onClick={e => e.stopPropagation()}>
+ <Login onLogin={handleLogin} onRegister={handleRegister} />
+ </div>
+ </div>
+ )}
  {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
  {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
       {view === 'pricing' && (
@@ -388,11 +450,8 @@ function App() {
             <button className="btn btn-primary" onClick={() => setView('pricing')}>
               💰 View Pricing
             </button>
-            <button className="btn btn-senior" onClick={loginAsSenior}>
-              👵 Demo as Senior
-            </button>
-            <button className="btn btn-family" onClick={loginAsFamily}>
-              👨‍👩‍👧 Demo as Family
+            <button className="btn btn-senior" onClick={() => setShowLogin(true)}>
+              👵 Sign Up / Login
             </button>
           </div>
 

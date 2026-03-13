@@ -63,21 +63,52 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-html, body {
-  overflow-x: hidden !important;
-  width: 100% !important;
-  max-width: 100vw !important;
-  box-sizing: border-box !important;
+html {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 
 /* === Core Layout === */
 .app {
-  max-width: 600px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 20px;
+  padding: 10px;
   min-height: 100vh;
   overflow-x: hidden;
   width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+@media (min-width: 600px) {
+  .app {
+    padding: 20px;
+    max-width: 600px;
+  }
+}
+
+/* Prevent header overflow - keep original size */
+.header h1 {
+  font-size: 3.2rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 2.2rem;
+    white-space: nowrap;
+  }
 }
 
 /* Center everything in home view */
