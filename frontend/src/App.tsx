@@ -731,6 +731,10 @@ function App() {
           <div className="connection-note">
             <p>💝 You're connected to Mom's wellness updates. She chooses what to share.</p>
           </div>
+
+          <div className="bottom-theme-btn">
+            <ThemeButton onClick={() => setShowSettings(true)} />
+          </div>
         </main>
       )}
     </div>

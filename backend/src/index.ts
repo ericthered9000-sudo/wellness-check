@@ -12,7 +12,7 @@ import { initVisits } from './visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
 import authRouter from './routes/auth';
 import { authMiddleware } from './middleware/auth';
-import { setupInviteRoutes } from './routes/invites';
+import invitesRouter from './routes/invites';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -227,7 +227,7 @@ app.use('/api/visits', visitsRouter);
 initVisits(db as any);
 
 // Invite code routes for family connections
-setupInviteRoutes(db as any);
+app.use('/api/invites', invitesRouter(db));
 
 // Permission helpers
 function setUserPermissions(req: express.Request, res: express.Response, next: express.NextFunction) {

@@ -9,7 +9,7 @@ function generateInviteCode(): string {
   return `HB-${code}`;
 }
 
-export function setupInviteRoutes(db: any) {
+export default (db: any) => {
   // Create invite_codes table if not exists
   db.exec(`
     CREATE TABLE IF NOT EXISTS invite_codes (
@@ -133,6 +133,6 @@ export function setupInviteRoutes(db: any) {
       res.status(500).json({ error: 'Failed to fetch invite code' });
     }
   });
-}
 
-export default router;
+  return router;
+};
