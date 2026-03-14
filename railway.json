@@ -1,15 +1,13 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd /app && npm install && cd backend && npm run build"
+    "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd /app/backend && npm start",
+    "startCommand": "node backend/dist/index.js",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRestarts": 3
   }
 }
-# Force rebuild Sat Mar 14 08:26:20 AM CDT 2026
