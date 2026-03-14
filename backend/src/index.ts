@@ -13,7 +13,6 @@ import { checkPermission, PERMISSION_LEVELS } from './permissions';
 import authRouter from './routes/auth';
 import { authMiddleware } from './middleware/auth';
 import { setupInviteRoutes } from './routes/invites';
-// import healthRouter from './routes/health'; // TODO: Fix fetch import
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,7 +22,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Database setup - use /data directory on Railway for persistent storage
+// Database setup
 import { existsSync, mkdirSync } from 'fs';
 
 const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH 
@@ -50,9 +49,6 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
   
-  -- Add password_hash column if it doesn't exist (for existing databases)
-  INSERT OR IGNORE INTO pragma_table_info SELECT 'password_hash', 'TEXT', 0, 0, 0 FROM pragma_table_info('users') LIMIT 0;
-
   CREATE TABLE IF NOT EXISTS senior_profiles (
     user_id TEXT PRIMARY KEY,
     timezone TEXT DEFAULT 'America/Chicago',
@@ -106,7 +102,6 @@ db.exec(`
     FOREIGN KEY (senior_id) REFERENCES users(id)
   );
 
-  -- Medication Reminders Tables
   CREATE TABLE IF NOT EXISTS medications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -147,7 +142,6 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
-  -- Weekly Reports Table
   CREATE TABLE IF NOT EXISTS weekly_reports (
     id TEXT PRIMARY KEY,
     senior_id TEXT NOT NULL,
@@ -178,13 +172,11 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log(`WebSocket client connected: ${socket.id}`);
 
-  // Join a room for a specific user
   socket.on('join:user', (userId: string) => {
     socket.join(`user:${userId}`);
     console.log(`Socket ${socket.id} joined room user:${userId}`);
   });
 
-  // Join a room for family dashboard
   socket.on('join:family', (seniorId: string) => {
     socket.join(`family:${seniorId}`);
     console.log(`Socket ${socket.id} joined family room for senior:${seniorId}`);
@@ -217,11 +209,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Register auth routes FIRST before other middleware
+console.log('Registering auth routes...');
+app.use('/api/auth', authRouter(db));
+console.log('Auth routes registered');
+
 // Medication routes
 app.use('/api/medications', medicationsRouter);
-
-// Auth routes
-app.use('/api/auth', authRouter(db));
 
 // Weekly reports routes
 app.use('/api/reports', reportsRouter);
@@ -235,13 +229,7 @@ initVisits(db as any);
 // Invite code routes for family connections
 setupInviteRoutes(db as any);
 
-// Health integration routes (Google Fit, etc.)
-// TODO: Fix node-fetch import
-// app.use('/api/health', healthRouter);
-
-// ====== PERMISSION HELPERS ======
-
-// Get user permissions middleware
+// Permission helpers
 function setUserPermissions(req: express.Request, res: express.Response, next: express.NextFunction) {
   const userId = req.headers['x-user-id'] as string;
   if (!userId) {
@@ -250,7 +238,6 @@ function setUserPermissions(req: express.Request, res: express.Response, next: e
     return next();
   }
   
-  // Extract seniorId from route parameters if available
   let seniorId = req.params.seniorId || req.params.userId;
   if (!seniorId && req.params.familyMemberId) {
     seniorId = req.params.familyMemberId;
@@ -317,19 +304,15 @@ app.post('/api/activity', (req, res) => {
     );
     stmt.run(id, userId, type, JSON.stringify(value || null));
     
-    // Record updated wellness score
     const score = recordDailyScore(db, userId);
     
-    // Emit real-time updates
     const newActivity = { id, userId, type, timestamp: new Date().toISOString() };
     emitWellnessUpdate(userId, { type: 'activity', data: newActivity });
     
-    // Get family connections for this user
     const connections = db.prepare(
       'SELECT family_member_id FROM family_connections WHERE senior_id = ?'
     ).all(userId);
     
-    // Emit update to all family members
     connections.forEach((conn: any) => {
       emitFamilyUpdate(conn.family_member_id, {
         type: 'activity',
@@ -377,7 +360,6 @@ app.get('/api/wellness/:userId', (req, res) => {
   ).get(userId, targetDate);
   
   if (!score) {
-    // Calculate a placeholder score based on recent activity
     const recentActivity = db.prepare(`
       SELECT COUNT(*) as count FROM activity_events 
       WHERE user_id = ? AND timestamp >= datetime('now', '-24 hours')
@@ -462,17 +444,14 @@ app.post('/api/checkin', (req, res) => {
   const id = `${userId}-${Date.now()}`;
   
   try {
-    // Record as activity event
     const stmt = db.prepare(
       'INSERT INTO activity_events (id, user_id, type, value) VALUES (?, ?, ?, ?)'
     );
     stmt.run(id, userId, 'checkin', JSON.stringify({ status, message }));
     
-    // Get senior ID for notification
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as { role?: 'senior' | 'family' } | undefined;
     
     if (user?.role === 'senior') {
-      // Emit real-time update to family
       const checkInData = {
         id,
         userId,
@@ -481,7 +460,6 @@ app.post('/api/checkin', (req, res) => {
         timestamp: new Date().toISOString()
       };
       
-      // Find family connections
       const connections = db.prepare(
         'SELECT family_member_id FROM family_connections WHERE senior_id = ?'
       ).all(userId);
@@ -582,5 +560,5 @@ server.listen(PORT, () => {
   console.log(`🏥 Wellness Check API running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`⚡ WebSocket server ready`);
+  console.log(`🔐 Auth routes: /api/auth/register, /api/auth/login`);
 });
-// Force rebuild Fri Mar 13 11:38:53 PM CDT 2026
