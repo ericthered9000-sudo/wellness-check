@@ -157,4 +157,4 @@ export function WeeklyReport({ seniorId }: Props) {
   );
 }
 
-export default { WeeklyReport };
+export default WeeklyReport;

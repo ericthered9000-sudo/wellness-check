@@ -565,6 +565,9 @@ function App() {
 
           {navSection === 'report' && (
             <div className="report-section">
+              <button className="back-btn" onClick={() => setNavSection('home')} style={{ marginBottom: '1rem' }}>
+                ← Back to Home
+              </button>
               <WeeklyReport seniorId={user.id} />
             </div>
           )}
