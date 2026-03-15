@@ -116,7 +116,7 @@ export function ThemeButton({ onClick }: { onClick: () => void }) {
   return (
     <button className="theme-btn" onClick={onClick} title="Customize appearance">
       <span className="theme-icon">🎨</span>
-      <span className="theme-label">Themes</span>
+      <span className="theme-label">Customize</span>
     </button>
   );
 }
