@@ -31,6 +31,7 @@ import './components/DoctorVisits.css'
 import './components/Notifications.css'
 import './components/BottomNav.css'
 import './components/EmergencyButton.css'
+import './components/FamilyHeader.css'
 import './App.css'
 
 
@@ -619,8 +620,15 @@ function App() {
           </button>
 
           <div className="family-header">
-            <h2>Mom's Wellness</h2>
-            <p className="last-update">Last updated: just now</p>
+            <div className="family-header-top">
+              <div className="family-header-text">
+                <h2>Mom's Wellness</h2>
+                <p className="last-update">Last updated: just now</p>
+              </div>
+              <div className="family-theme-btn">
+                <ThemeButton onClick={() => setShowSettings(true)} />
+              </div>
+            </div>
           </div>
 
           <div className="wellness-card">
