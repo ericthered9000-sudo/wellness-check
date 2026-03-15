@@ -261,10 +261,14 @@ main {
 .bottom-theme-btn {
   text-align: center;
   margin: 16px 0;
+  display: flex;
+  justify-content: center;
 }
 
 .bottom-theme-btn button {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* Notifications container - below check-in, above emergency */
@@ -524,14 +528,6 @@ main {
   .score {
     font-size: 3.5rem;
     padding: 12px 24px;
-  }
-  
-  .header .theme-btn .theme-label {
-    display: none;
-  }
-  
-  .header .theme-btn {
-    padding: 10px;
   }
   
   .tabs {
