@@ -12,6 +12,7 @@ import { TermsModal } from './components/TermsModal'
 import { DeleteDataButton } from './components/DeleteDataButton'
 import { InviteCodeGenerator } from './components/InviteCodeGenerator'
 import { ConnectToSenior } from './components/ConnectToSenior'
+import { AccountSettings } from './components/AccountSettings'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { EmergencyButton } from './components/EmergencyButton'
 import { Pricing } from './components/Pricing'
@@ -106,6 +107,7 @@ function App() {
   const [showInvite, setShowInvite] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const { accepted: disclaimerAccepted, acceptDisclaimer, resetDisclaimer } = useDisclaimerAccepted();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'default'>('default');
   const checkInMessageRef = useRef<HTMLTextAreaElement>(null);
@@ -413,6 +415,10 @@ function App() {
  <ConnectToSenior familyMemberId={user.id} onClose={() => setShowConnect(false)} onConnected={() => console.log('Connected!')} />
  )}
 
+ {showAccountSettings && view === 'senior' && user && (
+ <AccountSettings userId={user.id} email={user.email} onClose={() => setShowAccountSettings(false)} />
+ )}
+
  {!disclaimerAccepted && (
  <DisclaimerModal
  onAccept={acceptDisclaimer}
@@ -591,10 +597,13 @@ function App() {
 
           <div className="family-connection-section">
             <h3>Family Connections</h3>
+            <button onClick={() => setShowAccountSettings(true)} className="btn btn-secondary" style={{ width: '100%', marginBottom: '0.75rem' }}>
+              👤 Account Settings
+            </button>
             <button onClick={() => setShowInvite(true)} className="btn btn-secondary" style={{ width: '100%', marginBottom: '0.75rem' }}>
               👨‍👩‍👧 Invite Family Members
             </button>
-            <p className="hint">Share a unique code so family can connect to your wellness updates</p>
+            <p className="hint">View your account info and share invite codes with family</p>
           </div>
 
           <div className="legal-section">
