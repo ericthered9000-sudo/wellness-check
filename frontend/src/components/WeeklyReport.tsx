@@ -17,11 +17,13 @@ interface WeeklyReport {
 
 interface Props {
   seniorId: string;
+  onBack?: () => void;
 }
 
-export function WeeklyReport({ seniorId }: Props) {
+export function WeeklyReport({ seniorId, onBack }: Props) {
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (seniorId) {
@@ -32,11 +34,16 @@ export function WeeklyReport({ seniorId }: Props) {
   const loadReport = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await fetch(`${API_URL}/api/reports/weekly/${seniorId}`);
       const data = await res.json();
-      setReport(data);
-    } catch (error) {
-      console.error('Failed to load report:', error);
+      if (res.ok) {
+        setReport(data);
+      } else {
+        setError(data.error || 'Failed to load report');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load report');
     } finally {
       setLoading(false);
     }
@@ -59,7 +66,26 @@ export function WeeklyReport({ seniorId }: Props) {
   if (loading) {
     return (
       <div className="weekly-report">
+        <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: '1rem' }}>
+          ← Back
+        </button>
         <h3>Loading Report...</h3>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="weekly-report">
+        <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: '1rem' }}>
+          ← Back
+        </button>
+        <h3>Report Unavailable</h3>
+        <p className="error-message" style={{ color: '#dc3545', marginBottom: '1rem' }}>{error}</p>
+        <p>Weekly reports require backend data. This feature will be available after your next check-in.</p>
+        <button className="btn btn-primary" onClick={loadReport}>
+          🔄 Try Again
+        </button>
       </div>
     );
   }
@@ -67,8 +93,11 @@ export function WeeklyReport({ seniorId }: Props) {
   if (!report) {
     return (
       <div className="weekly-report">
-        <h3>No Report Available</h3>
-        <p>Reports are generated weekly. Check back later.</p>
+        <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: '1rem' }}>
+          ← Back
+        </button>
+        <h3>No Report Yet</h3>
+        <p>Complete your daily check-ins to generate your first weekly report.</p>
       </div>
     );
   }
