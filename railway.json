@@ -4,27 +4,29 @@
     "builder": "NIXPACKS",
     "nixpacksPlan": {
       "phases": {
+        "setup": {
+          "name": "Setup Node",
+          "provider": "node",
+          "version": "22.x"
+        },
         "install": {
           "dependsOn": ["setup"],
-          "cmds": ["npm install"],
-          "cacheDirs": ["node_modules"]
+          "cmds": ["cd backend && npm install"],
+          "cacheDirs": ["backend/node_modules"]
         },
         "build": {
           "dependsOn": ["install"],
-          "cmds": ["npm run build"]
+          "cmds": ["cd backend && npm run build"]
         }
       },
       "start": {
-        "cmd": "npm start"
+        "cmd": "cd backend && npm start"
       }
     }
   },
   "deploy": {
-    "startCommand": "npm start",
+    "startCommand": "cd backend && npm start",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 300,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10,
-    "workingDirectory": "backend"
+    "healthcheckTimeout": 300
   }
 }
