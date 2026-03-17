@@ -1,11 +1,15 @@
 import express from 'express';
+import { inviteLimiter } from '../middleware/rateLimit';
 
 const router = express.Router();
 
-// Generate 6-character invite code (e.g., HB-8472)
+// Generate 8-character alphanumeric invite code (e.g., HB-X7K9M2P4)
 function generateInviteCode(): string {
-  const chars = '0123456789';
-  const code = Array(4).fill(0).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1 to avoid confusion
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
   return `HB-${code}`;
 }
 
@@ -63,12 +67,12 @@ export default (db: any) => {
     }
   });
 
-  // POST /api/invites/redeem - Family member redeems code
-  router.post('/redeem', (req, res) => {
+  // POST /api/invites/redeem - Family member redeems code - with rate limiting
+  router.post('/redeem', inviteLimiter, (req, res) => {
     const { code, familyMemberId, seniorId } = req.body;
     
     if (!code || !familyMemberId || !seniorId) {
-      return res.status(400).json({ error: 'code, familyMemberId, and seniorId required' });
+      return res.status(400).json({ error: 'Missing required fields' });
     }
     
     try {
@@ -76,20 +80,20 @@ export default (db: any) => {
       const invite = db.prepare('SELECT * FROM invite_codes WHERE code = ?').get(code) as any;
       
       if (!invite) {
-        return res.status(404).json({ error: 'Invalid invite code' });
+        return res.status(404).json({ error: 'Connection failed' }); // Generic
       }
       
       if (invite.used) {
-        return res.status(409).json({ error: 'Invite code already used' });
+        return res.status(409).json({ error: 'Connection failed' }); // Generic
       }
       
       if (new Date(invite.expires_at) < new Date()) {
-        return res.status(410).json({ error: 'Invite code expired' });
+        return res.status(410).json({ error: 'Connection failed' }); // Generic
       }
       
       // Verify code belongs to this senior
       if (invite.senior_id !== seniorId) {
-        return res.status(400).json({ error: 'Code does not match senior' });
+        return res.status(400).json({ error: 'Connection failed' }); // Generic
       }
       
       // Mark code as used
@@ -109,7 +113,7 @@ export default (db: any) => {
       });
     } catch (error: any) {
       console.error('Failed to redeem invite code:', error);
-      res.status(500).json({ error: 'Failed to redeem invite code' });
+      res.status(500).json({ error: 'Connection failed' });
     }
   });
 

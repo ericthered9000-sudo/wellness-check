@@ -2,7 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthRequest, JWTPayload } from '../types/auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required. Set it in .env file.');
+}
 const JWT_EXPIRES_IN = '7d'; // 7 days
 
 export const generateToken = (user: { id: string; email: string; role: 'senior' | 'family' }): string => {
@@ -22,14 +25,14 @@ export const verifyToken = (token: string): JWTPayload | null => {
 };
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
+  // Try to get token from cookie first (httpOnly), then from Authorization header
+  const token = req.cookies?.auth_token || req.headers.authorization?.substring(7);
   
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     res.status(401).json({ success: false, error: 'No token provided' });
     return;
   }
 
-  const token = authHeader.substring(7);
   const decoded = verifyToken(token);
   
   if (!decoded) {

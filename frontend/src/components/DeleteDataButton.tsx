@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { API_URL } from '../config';
 import './DeleteDataButton.css';
 
 interface DeleteDataButtonProps {
-  onDelete: () => Promise<void>;
+  onDeleted?: () => void;
 }
 
-export function DeleteDataButton({ onDelete }: DeleteDataButtonProps) {
+export function DeleteDataButton({ onDeleted }: DeleteDataButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
@@ -16,11 +17,27 @@ export function DeleteDataButton({ onDelete }: DeleteDataButtonProps) {
     setError(null);
     
     try {
-      await onDelete();
+      const response = await fetch(`${API_URL}/api/account`, {
+        method: 'DELETE',
+        credentials: 'include', // Send httpOnly cookie
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      // Clear local storage
+      localStorage.clear();
       setDeleted(true);
       setShowConfirm(false);
-    } catch (err) {
-      setError('Failed to delete data. Please try again.');
+      
+      if (onDeleted) {
+        onDeleted();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete account. Please try again.');
       console.error('Delete error:', err);
     } finally {
       setIsDeleting(false);

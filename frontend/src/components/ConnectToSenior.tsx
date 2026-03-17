@@ -35,7 +35,10 @@ export function ConnectToSenior({ familyMemberId, onClose, onConnected }: Connec
     try {
       const res = await fetch(`${API_URL}/api/invites/redeem`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include', // Send httpOnly cookie
         body: JSON.stringify({ 
           code: code.trim(),
           familyMemberId,

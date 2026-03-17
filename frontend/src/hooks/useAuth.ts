@@ -10,7 +10,8 @@ export function useAuth() {
     queryKey: ['currentUser'],
     queryFn: getCurrentUser,
     retry: false,
-    enabled: !!localStorage.getItem('auth_token'),
+    // Cookie is sent automatically, no need to check localStorage
+    enabled: true,
   });
 
   const registerMutation = useMutation({
@@ -35,8 +36,8 @@ export function useAuth() {
     },
   });
 
-  const logout = () => {
-    apiLogout();
+  const logout = async () => {
+    await apiLogout();
     storeLogout();
     queryClient.clear();
   };

@@ -2,15 +2,24 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { generateToken, authMiddleware } from '../middleware/auth';
+import { authLimiter } from '../middleware/rateLimit';
 import { AuthRequest } from '../types/auth';
 import * as betterSqlite3 from 'better-sqlite3';
 
 const router = Router();
 
+// Strong password validation - 12+ chars with complexity
+const passwordSchema = z.string()
+  .min(12, 'Password must be at least 12 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+
 // Validation schemas
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: passwordSchema,
   role: z.enum(['senior', 'family'])
 });
 
@@ -20,8 +29,8 @@ const loginSchema = z.object({
 });
 
 export default (db: betterSqlite3.Database) => {
-  // Register new user
-  router.post('/register', async (req: Request, res: Response) => {
+  // Register new user - with rate limiting
+  router.post('/register', authLimiter, async (req: Request, res: Response) => {
     try {
       const validation = registerSchema.safeParse(req.body);
       
@@ -35,12 +44,12 @@ export default (db: betterSqlite3.Database) => {
 
       const { email, password, role } = validation.data;
 
-      // Check if user already exists
+      // Check if user already exists - use generic message to avoid enumeration
       const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
       if (existingUser) {
         return res.status(409).json({
           success: false,
-          error: 'Email already registered'
+          error: 'Registration failed' // Generic to avoid user enumeration
         });
       }
 
@@ -63,13 +72,20 @@ export default (db: betterSqlite3.Database) => {
         `).run(userId);
       }
 
-      // Generate token
+      // Generate token and set as httpOnly cookie
       const token = generateToken({ id: userId, email, role });
+
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/'
+      });
 
       res.status(201).json({
         success: true,
-        user: { id: userId, email, role },
-        token
+        user: { id: userId, email, role }
       });
     } catch (error) {
       console.error('Registration error:', error);
@@ -80,8 +96,8 @@ export default (db: betterSqlite3.Database) => {
     }
   });
 
-  // Login
-  router.post('/login', async (req: Request, res: Response) => {
+  // Login - with rate limiting
+  router.post('/login', authLimiter, async (req: Request, res: Response) => {
     try {
       const validation = loginSchema.safeParse(req.body);
       
@@ -105,26 +121,33 @@ export default (db: betterSqlite3.Database) => {
       if (!user) {
         return res.status(401).json({
           success: false,
-          error: 'Invalid credentials'
+          error: 'Invalid credentials' // Generic - same as wrong password
         });
       }
 
-      // Verify password
+      // Verify password - use constant-time comparison
       const validPassword = await bcrypt.compare(password, user.password_hash);
       if (!validPassword) {
         return res.status(401).json({
           success: false,
-          error: 'Invalid credentials'
+          error: 'Invalid credentials' // Same message as user not found
         });
       }
 
-      // Generate token
+      // Generate token and set as httpOnly cookie
       const token = generateToken({ id: user.id, email: user.email, role: user.role as 'senior' | 'family' });
+
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/'
+      });
 
       res.json({
         success: true,
-        user: { id: user.id, email: user.email, role: user.role },
-        token
+        user: { id: user.id, email: user.email, role: user.role }
       });
     } catch (error) {
       console.error('Login error:', error);

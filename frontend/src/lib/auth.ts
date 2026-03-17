@@ -9,32 +9,42 @@ export interface User {
 export interface AuthResponse {
   success: boolean;
   user?: User;
-  token?: string;
   error?: string;
   details?: Array<{ path: string[]; message: string }>;
 }
 
-// Token storage
-export const getToken = (): string | null => localStorage.getItem('auth_token');
-export const setToken = (token: string): void => localStorage.setItem('auth_token', token);
-export const clearToken = (): void => localStorage.removeItem('auth_token');
+// Token is now stored in httpOnly cookie by backend
+// These functions are kept for backward compatibility
 
-// API client with auth headers
+export const getToken = (): string | null => {
+  // Token is in httpOnly cookie, not accessible from JavaScript
+  return null;
+};
+
+export const setToken = (_token: string): void => {
+  // Token is set by backend as httpOnly cookie
+  console.log('Token set by backend as httpOnly cookie');
+};
+
+export const clearToken = (): void => {
+  // Token is cleared by backend on logout
+  console.log('Token cleared by backend');
+};
+
+// API client with credentials (cookies)
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getToken();
-  
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include', // Send cookies with request
   });
 
   const data = await response.json();
@@ -53,10 +63,7 @@ export async function register(email: string, password: string, role: 'senior' |
     body: JSON.stringify({ email, password, role }),
   });
 
-  if (response.success && response.token) {
-    setToken(response.token);
-  }
-
+  // Token is set by backend as httpOnly cookie
   return response;
 }
 
@@ -66,10 +73,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
     body: JSON.stringify({ email, password }),
   });
 
-  if (response.success && response.token) {
-    setToken(response.token);
-  }
-
+  // Token is set by backend as httpOnly cookie
   return response;
 }
 
@@ -77,10 +81,16 @@ export async function getCurrentUser(): Promise<AuthResponse> {
   return apiClient<AuthResponse>('/api/auth/me');
 }
 
-export function logout(): void {
+export async function logout(): Promise<void> {
+  // Call backend to clear cookie
+  await apiClient('/api/auth/logout', {
+    method: 'POST',
+  });
   clearToken();
 }
 
 export function isAuthenticated(): boolean {
-  return !!getToken();
+  // Check is done by backend via cookie
+  // This is a placeholder - actual check happens on API calls
+  return true;
 }

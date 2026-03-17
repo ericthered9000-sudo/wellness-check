@@ -274,19 +274,19 @@ function App() {
   }, [user, view]);
 
   useEffect(() => {
-    if (user && (view === 'senior' || view === 'family')) {
-      // Family members view the senior they're linked to's data
-      const seniorId = view === 'senior' ? user.id : DEMO_SENIOR_ID;
-
-      fetch(`${API_URL}/api/wellness/${seniorId}`).then(r => r.json()).then(wellnessData => {
+    if (user && view === 'senior') {
+      // Senior views their own data
+      fetch(`${API_URL}/api/wellness/${user.id}`).then(r => r.json()).then(wellnessData => {
         setWellnessScore(wellnessData);
       }).catch(console.error);
 
-      fetch(`${API_URL}/api/alerts/${seniorId}`)
+      fetch(`${API_URL}/api/alerts/${user.id}`)
         .then(r => r.json())
         .then(setAlerts)
         .catch(console.error);
     }
+    // Family view: fetch connected senior's data (requires connection setup)
+    // This will be implemented with proper connection fetching
   }, [user, view]);
 
   useEffect(() => {
@@ -616,7 +616,7 @@ function App() {
               <button onClick={() => resetDisclaimer()} className="legal-btn">Disclaimer</button>
             </div>
             <div className="delete-data-section">
-              <DeleteDataButton onDelete={async () => { localStorage.clear(); window.location.reload(); }} />
+              <DeleteDataButton onDeleted={() => { window.location.href = '/'; }} />
             </div>
           </div>
         </main>
@@ -752,3 +752,4 @@ function App() {
 }
 
 export default App
+App

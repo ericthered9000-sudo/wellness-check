@@ -1,9 +1,12 @@
+import 'dotenv/config'; // Load .env file
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import Database from 'better-sqlite3';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { analyzeWellness, recordDailyScore, checkForAlerts } from './pattern';
 import medicationsRouter from './routes/medications';
 import reportsRouter from './routes/reports';
@@ -12,15 +15,25 @@ import { initVisits } from './visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
 import authRouter from './routes/auth';
 import { authMiddleware } from './middleware/auth';
+import { AuthRequest } from './types/auth';
 import invitesRouter from './routes/invites';
+import accountRouter from './routes/account';
+import { apiLimiter } from './middleware/rateLimit';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
+
+// Apply general API rate limiter to all routes
+app.use('/api', apiLimiter);
 
 // Database setup
 import { existsSync, mkdirSync } from 'fs';
@@ -163,7 +176,8 @@ db.exec(`
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true,
     methods: ['GET', 'POST']
   }
 });
@@ -229,8 +243,13 @@ initVisits(db as any);
 // Invite code routes for family connections
 app.use('/api/invites', invitesRouter(db));
 
-// Permission helpers
+// Account management routes (delete account, get account info)
+app.use('/api/account', accountRouter(db));
+
+// Permission helpers - DEPRECATED: Use authMiddleware instead
+// Keeping for backward compatibility but marking as deprecated
 function setUserPermissions(req: express.Request, res: express.Response, next: express.NextFunction) {
+  console.warn('WARNING: setUserPermissions is deprecated. Use authMiddleware for protected routes.');
   const userId = req.headers['x-user-id'] as string;
   if (!userId) {
     req.userId = 'demo-user';
@@ -258,11 +277,15 @@ function setUserPermissions(req: express.Request, res: express.Response, next: e
   next();
 }
 
-app.use(setUserPermissions);
-
-// Users API
-app.post('/api/users', (req, res) => {
+// Users API - Protected routes
+app.post('/api/users', authMiddleware, (req: AuthRequest, res) => {
+  // Only allow self-registration or admin
   const { id, email, role } = req.body;
+  
+  // Verify user can only create their own account
+  if (req.user && req.user.id !== id) {
+    return res.status(403).json({ error: 'Cannot create account for another user' });
+  }
   
   if (!id || !email || !role) {
     return res.status(400).json({ error: 'Missing required fields: id, email, role' });
@@ -280,20 +303,27 @@ app.post('/api/users', (req, res) => {
   }
 });
 
-app.get('/api/users/:id', (req, res) => {
+app.get('/api/users/:id', authMiddleware, (req: AuthRequest, res) => {
+  // Users can only view their own profile
+  if (req.user && req.user.id !== req.params.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
   }
-  res.json(user);
+  // Don't return password hash
+  const { password_hash, ...safeUser } = user as any;
+  res.json(safeUser);
 });
 
-// Activity Events API
-app.post('/api/activity', (req, res) => {
-  const { userId, type, value } = req.body;
+// Activity Events API - Protected routes
+app.post('/api/activity', authMiddleware, (req: AuthRequest, res) => {
+  const userId = req.user!.id; // From token, not body (authMiddleware guarantees user is set)
+  const { type, value } = req.body;
   
-  if (!userId || !type) {
-    return res.status(400).json({ error: 'Missing required fields: userId, type' });
+  if (!type) {
+    return res.status(400).json({ error: 'Missing required field: type' });
   }
   
   const id = `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -309,6 +339,7 @@ app.post('/api/activity', (req, res) => {
     const newActivity = { id, userId, type, timestamp: new Date().toISOString() };
     emitWellnessUpdate(userId, { type: 'activity', data: newActivity });
     
+    // Emit to family members who have permission
     const connections = db.prepare(
       'SELECT family_member_id FROM family_connections WHERE senior_id = ?'
     ).all(userId);
@@ -326,8 +357,21 @@ app.post('/api/activity', (req, res) => {
   }
 });
 
-app.get('/api/activity/:userId', (req, res) => {
+app.get('/api/activity/:userId', authMiddleware, (req: AuthRequest, res) => {
   const { userId } = req.params;
+  
+  // Users can only view their own activity, or family can view their senior's
+  if (req.user && req.user.id !== userId) {
+    // Check if user is family member with permission to view this senior
+    const connection = db.prepare(
+      'SELECT * FROM family_connections WHERE senior_id = ? AND family_member_id = ?'
+    ).get(userId, req.user.id);
+    
+    if (!connection) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
+  
   const { since, limit = '100' } = req.query;
   
   let query = 'SELECT * FROM activity_events WHERE user_id = ?';
@@ -348,10 +392,22 @@ app.get('/api/activity/:userId', (req, res) => {
   })));
 });
 
-// Wellness Score API
-app.get('/api/wellness/:userId', (req, res) => {
+// Wellness Score API - Protected routes
+app.get('/api/wellness/:userId', authMiddleware, (req: AuthRequest, res) => {
   const { userId } = req.params;
   const { date } = req.query;
+  
+  // Users can only view their own wellness, or family can view their senior's
+  if (req.user && req.user.id !== userId) {
+    // Check if user is family member with permission to view this senior
+    const connection = db.prepare(
+      'SELECT * FROM family_connections WHERE senior_id = ? AND family_member_id = ?'
+    ).get(userId, req.user.id);
+    
+    if (!connection) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
   
   const targetDate = date || new Date().toISOString().split('T')[0];
   
@@ -379,9 +435,14 @@ app.get('/api/wellness/:userId', (req, res) => {
   res.json(score);
 });
 
-// Family Connections API
-app.post('/api/connections', (req, res) => {
+// Family Connections API - Protected routes
+app.post('/api/connections', authMiddleware, (req: AuthRequest, res) => {
   const { seniorId, familyMemberId, permissionLevel = 'view', role = 'viewer' } = req.body;
+  
+  // Users can only create connections for themselves
+  if (req.user && req.user.id !== familyMemberId) {
+    return res.status(403).json({ error: 'Cannot create connection for another user' });
+  }
   
   if (!seniorId || !familyMemberId) {
     return res.status(400).json({ error: 'Missing required fields: seniorId, familyMemberId' });
@@ -403,19 +464,37 @@ app.post('/api/connections', (req, res) => {
   }
 });
 
-app.get('/api/connections/family/:familyMemberId', (req, res) => {
+app.get('/api/connections/family/:familyMemberId', authMiddleware, (req: AuthRequest, res) => {
+  // Users can only view their own connections
+  if (req.user && req.user.id !== req.params.familyMemberId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   const connections = db.prepare(
     'SELECT fc.*, u.email as senior_email FROM family_connections fc JOIN users u ON fc.senior_id = u.id WHERE fc.family_member_id = ?'
   ).all(req.params.familyMemberId);
   res.json(connections);
 });
 
-app.post('/api/connections/:id/role', (req, res) => {
+app.post('/api/connections/:id/role', authMiddleware, (req: AuthRequest, res) => {
   const { id } = req.params;
   const { role } = req.body;
   
   if (!role || !['viewer', 'editor', 'admin'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role. Must be viewer, editor, or admin' });
+  }
+  
+  // Verify user has permission to modify this connection
+  const connection = db.prepare('SELECT * FROM family_connections WHERE id = ?').get(id) as any;
+  if (!connection) {
+    return res.status(404).json({ error: 'Connection not found' });
+  }
+  
+  // Only the family member or an admin can update the role
+  if (req.user && req.user.id !== connection.family_member_id) {
+    // Check if user is admin on this connection
+    if (connection.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
   }
   
   try {
@@ -480,12 +559,13 @@ app.post('/api/checkin', (req, res) => {
   }
 });
 
-// Push Notification Endpoints
-app.post('/api/notifications/register', (req, res) => {
-  const { userId, subscription } = req.body;
+// Push Notification Endpoints - Protected routes
+app.post('/api/notifications/register', authMiddleware, (req: AuthRequest, res) => {
+  const userId = req.user!.id; // From token, not body (authMiddleware guarantees user is set)
+  const { subscription } = req.body;
   
-  if (!userId || !subscription) {
-    return res.status(400).json({ error: 'Missing required fields: userId, subscription' });
+  if (!subscription) {
+    return res.status(400).json({ error: 'Missing required field: subscription' });
   }
   
   if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
@@ -514,8 +594,13 @@ app.post('/api/notifications/register', (req, res) => {
   }
 });
 
-app.get('/api/notifications/subscriptions/:userId', (req, res) => {
+app.get('/api/notifications/subscriptions/:userId', authMiddleware, (req: AuthRequest, res) => {
   const { userId } = req.params;
+  
+  // Users can only view their own subscriptions
+  if (req.user && req.user.id !== userId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   
   const subscriptions = db.prepare(
     'SELECT id, endpoint, created_at FROM push_subscriptions WHERE user_id = ?'
@@ -524,9 +609,21 @@ app.get('/api/notifications/subscriptions/:userId', (req, res) => {
   res.json(subscriptions);
 });
 
-// Pattern Analysis API
-app.get('/api/pattern/:userId', (req, res) => {
+// Pattern Analysis API - Protected routes
+app.get('/api/pattern/:userId', authMiddleware, (req: AuthRequest, res) => {
   const { userId } = req.params;
+  
+  // Users can only view their own pattern, or family can view their senior's
+  if (req.user && req.user.id !== userId) {
+    const connection = db.prepare(
+      'SELECT * FROM family_connections WHERE senior_id = ? AND family_member_id = ?'
+    ).get(userId, req.user.id);
+    
+    if (!connection) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
+  
   try {
     const score = analyzeWellness(db, userId);
     res.json(score);
@@ -535,8 +632,14 @@ app.get('/api/pattern/:userId', (req, res) => {
   }
 });
 
-app.post('/api/pattern/:userId/record', (req, res) => {
+app.post('/api/pattern/:userId/record', authMiddleware, (req: AuthRequest, res) => {
   const { userId } = req.params;
+  
+  // Users can only record their own score
+  if (req.user && req.user.id !== userId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
   try {
     const score = recordDailyScore(db, userId);
     res.json({ score });
@@ -545,8 +648,20 @@ app.post('/api/pattern/:userId/record', (req, res) => {
   }
 });
 
-app.get('/api/alerts/:userId', (req, res) => {
+app.get('/api/alerts/:userId', authMiddleware, (req: AuthRequest, res) => {
   const { userId } = req.params;
+  
+  // Users can only view their own alerts, or family can view their senior's
+  if (req.user && req.user.id !== userId) {
+    const connection = db.prepare(
+      'SELECT * FROM family_connections WHERE senior_id = ? AND family_member_id = ?'
+    ).get(userId, req.user.id);
+    
+    if (!connection) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
+  
   try {
     const alerts = checkForAlerts(db, userId);
     res.json({ alerts });
