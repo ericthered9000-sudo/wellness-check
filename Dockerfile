@@ -4,21 +4,19 @@ FROM node:22-bookworm
 # Set working directory
 WORKDIR /app
 
-# Copy root package files
+# Copy all package files (workspace structure)
 COPY package.json package-lock.json ./
+COPY backend/package.json ./backend/
 
-# Copy backend package files
-COPY backend/package.json backend/package-lock.json ./backend/
-
-# Install all dependencies
-RUN npm install --workspaces
+# Install all workspace dependencies
+RUN npm install --workspaces --include-workspace-root
 
 # Copy backend source code
 COPY backend/src ./backend/src
 COPY backend/tsconfig.json ./backend/
 
 # Build TypeScript
-RUN cd backend && npm run build
+RUN npm run build --workspace=backend
 
 # Expose port
 EXPOSE 3001
