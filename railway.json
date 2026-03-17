@@ -1,10 +1,11 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm run build"
+    "buildCommand": "npm run build --workspace=backend",
+    "installCommand": "npm install --workspace=backend"
   },
   "deploy": {
-    "startCommand": "npm start",
+    "startCommand": "npm start --workspace=backend",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",

@@ -1,11 +1,13 @@
-[phases.setup]
-nixPkgs = ["nodejs_22", "python3", "gcc", "gnumake"]
+# Nixpacks configuration for HomeBeacon backend
 
 [phases.install]
-cmds = ["npm install", "cd backend && npm install"]
+dependsOn = ["setup"]
+cmds = ["npm install --workspace=backend"]
+cacheDirs = ["node_modules"]
 
 [phases.build]
-cmds = ["cd backend && npm run build", "cd backend && npm rebuild better-sqlite3"]
+dependsOn = ["install"]
+cmds = ["npm run build --workspace=backend"]
 
 [start]
-cmd = "cd backend && npm start"
+cmd = "npm start --workspace=backend"
