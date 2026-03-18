@@ -1,0 +1,5 @@
+[build]
+builder = "NIXPACKS"
+
+[build.nixpacks]
+installCmd = "npm install --workspaces --include-workspace-root"
