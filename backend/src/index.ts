@@ -64,16 +64,6 @@ db.exec(`
     role TEXT NOT NULL CHECK(role IN ('senior', 'family')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
-`);
-
-// Migration: Add password_hash column if missing (for existing databases)
-try {
-  db.exec(`ALTER TABLE users ADD COLUMN password_hash TEXT;`);
-  console.log('✅ Migration: Added password_hash column');
-} catch (e) {
-  // Column already exists - that's fine
-  console.log('✓ password_hash column already exists');
-}
   
   CREATE TABLE IF NOT EXISTS senior_profiles (
     user_id TEXT PRIMARY KEY,
@@ -184,6 +174,15 @@ try {
     UNIQUE(senior_id, week_start)
   );
 `);
+
+// Migration: Add password_hash column if missing (for existing databases)
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN password_hash TEXT;`);
+  console.log('✅ Migration: Added password_hash column');
+} catch (e) {
+  // Column already exists - that's fine
+  console.log('✓ password_hash column already exists');
+}
 
 // Create HTTP server for Socket.io
 const server = createServer(app);
