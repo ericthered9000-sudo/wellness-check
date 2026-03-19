@@ -23,6 +23,9 @@ import { apiLimiter } from './middleware/rateLimit';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for Railway/load balancers (fixes rate limiter behind proxy)
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet());
 app.use(cors({
