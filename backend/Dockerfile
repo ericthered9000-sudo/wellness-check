@@ -6,10 +6,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Remove any cached dist and database
+RUN rm -rf dist wellness.db
 
 # Build TypeScript
 RUN npm run build
