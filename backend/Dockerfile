@@ -17,5 +17,5 @@ RUN npm run build
 # Expose port
 EXPOSE 8080
 
-# Start
-CMD ["npm", "start"]
+# Start with fresh database
+CMD ["sh", "-c", "rm -f ./wellness.db && npm start"]
