@@ -85,7 +85,8 @@ export default (db: betterSqlite3.Database) => {
 
       res.status(201).json({
         success: true,
-        user: { id: userId, email, role }
+        user: { id: userId, email, role },
+        token: token
       });
     } catch (error) {
       console.error('Registration error:', error);
@@ -147,7 +148,8 @@ export default (db: betterSqlite3.Database) => {
 
       res.json({
         success: true,
-        user: { id: user.id, email: user.email, role: user.role }
+        user: { id: user.id, email: user.email, role: user.role },
+        token: token
       });
     } catch (error) {
       console.error('Login error:', error);
