@@ -107,13 +107,13 @@ export function ConnectToSenior({ familyMemberId, onClose, onConnected }: Connec
                 type="text"
                 value={code}
                 onChange={e => setCode(e.target.value.toUpperCase())}
-                placeholder="HB-1234"
+                placeholder="HB-8472X9K2"
                 className="connect-input code-input"
                 disabled={loading}
-                maxLength={8}
+                maxLength={11}
                 style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace' }}
               />
-              <p className="form-hint">6-character code from your family member (e.g., HB-8472)</p>
+              <p className="form-hint">8-character code from your family member (e.g., HB-8472X9K2)</p>
             </div>
 
             <div className="connect-actions">
