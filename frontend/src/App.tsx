@@ -305,9 +305,9 @@ function App() {
       
       // Fetch alerts - handle missing gracefully
       fetch(`${API_URL}/api/alerts/${user.id}`)
-        .then(res => res.ok ? res.json() : [])
+        .then(res => res.ok ? res.json() : { alerts: [] })
         .then(setAlerts)
-        .catch(() => setAlerts([]));
+        .catch(() => setAlerts({ alerts: [] }));
     }
   }, [user, view]);
 
