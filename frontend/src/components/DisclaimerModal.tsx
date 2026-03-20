@@ -3,9 +3,10 @@ import './DisclaimerModal.css';
 
 interface DisclaimerModalProps {
   onAccept: () => void;
+  onExit: () => void;
 }
 
-export function DisclaimerModal({ onAccept }: DisclaimerModalProps) {
+export function DisclaimerModal({ onAccept, onExit }: DisclaimerModalProps) {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -83,7 +84,6 @@ export function DisclaimerModal({ onAccept }: DisclaimerModalProps) {
             className="btn btn-accept" 
             onClick={onAccept}
             disabled={!hasScrolledToBottom}
-            style={{ flex: 1 }}
           >
             I Agree
           </button>

@@ -419,9 +419,10 @@ function App() {
  <AccountSettings userId={user.id} email={user.email} onClose={() => setShowAccountSettings(false)} />
  )}
 
- {!disclaimerAccepted && (
+ {!disclaimerAccepted && view === 'home' && (
  <DisclaimerModal
  onAccept={acceptDisclaimer}
+ onExit={() => { setView('home'); }}
  />
  )}
 
