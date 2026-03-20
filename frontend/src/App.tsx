@@ -422,7 +422,6 @@ function App() {
  {!disclaimerAccepted && (
  <DisclaimerModal
  onAccept={acceptDisclaimer}
- onExit={() => { if(confirm('Are you sure you want to exit?')) { window.close(); } }}
  />
  )}
 

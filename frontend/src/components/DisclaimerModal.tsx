@@ -3,10 +3,9 @@ import './DisclaimerModal.css';
 
 interface DisclaimerModalProps {
   onAccept: () => void;
-  onExit: () => void;
 }
 
-export function DisclaimerModal({ onAccept, onExit }: DisclaimerModalProps) {
+export function DisclaimerModal({ onAccept }: DisclaimerModalProps) {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
