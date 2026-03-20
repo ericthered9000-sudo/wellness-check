@@ -61,23 +61,55 @@ export function Login({ onLogin, onRegister }: LoginProps) {
           <label htmlFor="password" style={{ fontWeight: 500 }}>
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-            disabled={isLoading}
-            minLength={8}
-            style={{
-              padding: '12px 16px',
-              borderRadius: '12px',
-              border: '2px solid #e2e8f0',
-              fontSize: '16px',
-              minHeight: '44px'
-            }}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              id="password"
+              type={mode === 'register' ? 'password' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              disabled={isLoading}
+              minLength={12}
+              style={{
+                padding: '12px 16px',
+                paddingRight: mode === 'register' ? '50px' : '16px',
+                borderRadius: '12px',
+                border: '2px solid #e2e8f0',
+                fontSize: '16px',
+                minHeight: '44px',
+                width: '100%'
+              }}
+            />
+            {mode === 'register' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById('password') as HTMLInputElement;
+                  input.type = input.type === 'password' ? 'text' : 'password';
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: '#6366f1',
+                  padding: '4px 8px'
+                }}
+              >
+                Show
+              </button>
+            )}
+          </div>
+          {mode === 'register' && (
+            <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+              <strong>Requirements:</strong> 12+ characters, uppercase, lowercase, number, special char (!@#$%^&*)
+            </div>
+          )}
         </div>
         
         {mode === 'register' && (
