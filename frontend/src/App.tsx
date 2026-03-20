@@ -291,10 +291,23 @@ function App() {
 
   useEffect(() => {
     if (user && view === 'senior') {
+      // Fetch activity - handle empty/missing gracefully
       fetch(`${API_URL}/api/activity/${user.id}?limit=10`)
-        .then(res => res.json())
+        .then(res => res.ok ? res.json() : [])
         .then(setActivities)
-        .catch(console.error);
+        .catch(() => setActivities([]));
+      
+      // Fetch wellness score - handle missing gracefully
+      fetch(`${API_URL}/api/wellness/${user.id}`)
+        .then(res => res.ok ? res.json() : { score: 0 })
+        .then(setWellnessScore)
+        .catch(() => setWellnessScore({ score: 0 }));
+      
+      // Fetch alerts - handle missing gracefully
+      fetch(`${API_URL}/api/alerts/${user.id}`)
+        .then(res => res.ok ? res.json() : [])
+        .then(setAlerts)
+        .catch(() => setAlerts([]));
     }
   }, [user, view]);
 
