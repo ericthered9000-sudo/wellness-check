@@ -111,7 +111,8 @@ export function ConnectToSenior({ familyMemberId, onClose, onConnected }: Connec
                 className="connect-input code-input"
                 disabled={loading}
                 maxLength={11}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace' }}
+                pattern="HB-[A-Z0-9]{8}"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'monospace', width: '100%', boxSizing: 'border-box' }}
               />
               <p className="form-hint">8-character code from your family member (e.g., HB-8472X9K2)</p>
             </div>
