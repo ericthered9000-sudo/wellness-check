@@ -81,15 +81,10 @@ export function DisclaimerModal({ onAccept, onExit }: DisclaimerModalProps) {
 
         <div className="disclaimer-actions">
           <button 
-            className="btn btn-exit" 
-            onClick={onExit}
-          >
-            Exit App
-          </button>
-          <button 
             className="btn btn-accept" 
             onClick={onAccept}
             disabled={!hasScrolledToBottom}
+            style={{ flex: 1 }}
           >
             I Agree
           </button>
