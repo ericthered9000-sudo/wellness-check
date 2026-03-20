@@ -509,6 +509,22 @@ function App() {
 
       {view === 'senior' && user && (
         <main className="senior-view main-with-nav">
+          {/* Logout button - always visible */}
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => { 
+              setUser(null); 
+              setView('home'); 
+              setNavSection('home');
+              disconnectSocket();
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('user_role');
+            }}
+            style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 1000 }}
+          >
+            Logout
+          </button>
+          
           {navSection === 'home' && (
             <>
               <div className="emergency-section" style={{ marginTop: '0.5rem', marginBottom: '1rem', position: 'sticky', top: '0', zIndex: '10' }}>
@@ -519,7 +535,7 @@ function App() {
                 <h2>Your Wellness Score</h2>
                 <div className="score-display">
                   <div className={`score ${getScoreColor(wellnessScore?.score)}`}>
-                    {wellnessScore?.score || '-'}
+                    {wellnessScore?.score ?? '-'}
                   </div>
                   <p className="score-label">out of 100</p>
                 </div>
