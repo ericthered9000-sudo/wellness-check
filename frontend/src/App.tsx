@@ -509,21 +509,23 @@ function App() {
 
       {view === 'senior' && user && (
         <main className="senior-view main-with-nav">
-          {/* Logout button - always visible */}
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => { 
-              setUser(null); 
-              setView('home'); 
-              setNavSection('home');
-              disconnectSocket();
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('user_role');
-            }}
-            style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 1000 }}
-          >
-            Logout
-          </button>
+          {/* Logout button - always visible at top */}
+          <div style={{ padding: '10px', background: '#fee', borderBottom: '2px solid #f00', textAlign: 'center' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => { 
+                setUser(null); 
+                setView('home'); 
+                setNavSection('home');
+                disconnectSocket();
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user_role');
+              }}
+              style={{ background: '#dc2626', color: 'white', fontWeight: 'bold' }}
+            >
+              🚪 Logout - Back to Home
+            </button>
+          </div>
           
           {navSection === 'home' && (
             <>
