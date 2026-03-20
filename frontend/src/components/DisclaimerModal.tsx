@@ -6,7 +6,7 @@ interface DisclaimerModalProps {
   onExit: () => void;
 }
 
-export function DisclaimerModal({ onAccept, onExit }: DisclaimerModalProps) {
+export function DisclaimerModal({ onAccept, onExit: _onExit }: DisclaimerModalProps) {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
