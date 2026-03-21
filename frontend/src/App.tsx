@@ -211,7 +211,8 @@ function App() {
       const data = await res.json();
       
       if (!res.ok) {
-        alert(data.error || 'Registration failed');
+        console.error('Registration error response:', data);
+        alert(data.error || `Registration failed: ${res.status} ${res.statusText}`);
         return;
       }
       
@@ -236,7 +237,7 @@ function App() {
       console.log('Registered as:', data.user.email, data.user.role);
     } catch (error) {
       console.error('Registration failed:', error);
-      alert('Registration failed. Please try again.');
+      alert('Registration failed: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
