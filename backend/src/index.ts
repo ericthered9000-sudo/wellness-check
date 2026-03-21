@@ -36,6 +36,7 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:4173',
+      'https://frontend-j8fsgfacl-ericthered9000-3193s-projects.vercel.app',
       'https://frontend-1f4yjreco-ericthered9000-3193s-projects.vercel.app',
       'https://frontend-l3v2hytn2-ericthered9000-3193s-projects.vercel.app',
       'capacitor://localhost',
