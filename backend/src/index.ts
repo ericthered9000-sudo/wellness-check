@@ -29,7 +29,26 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    // Allow specific origins
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:4173',
+      'https://frontend-1f4yjreco-ericthered9000-3193s-projects.vercel.app',
+      'https://frontend-l3v2hytn2-ericthered9000-3193s-projects.vercel.app',
+      'capacitor://localhost',
+      'http://localhost',
+      'ionic://localhost'
+    ];
+    if (allowedOrigins.includes(origin) || origin.startsWith('file://') || origin.includes('vercel.app')) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
