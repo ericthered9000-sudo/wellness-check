@@ -18,6 +18,7 @@ import { authMiddleware } from './middleware/auth';
 import { AuthRequest } from './types/auth';
 import invitesRouter from './routes/invites';
 import accountRouter from './routes/account';
+import subscriptionsRouter from './routes/subscriptions';
 import { apiLimiter } from './middleware/rateLimit';
 
 const app = express();
@@ -193,6 +194,36 @@ db.exec(`
     FOREIGN KEY (senior_id) REFERENCES users(id),
     UNIQUE(senior_id, week_start)
   );
+
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    tier TEXT NOT NULL DEFAULT 'free' CHECK(tier IN ('free', 'family', 'premium')),
+    billing_cycle TEXT DEFAULT 'monthly' CHECK(billing_cycle IN ('monthly', 'annual')),
+    status TEXT DEFAULT 'active' CHECK(status IN ('active', 'cancelled', 'expired')),
+    stripe_subscription_id TEXT,
+    stripe_customer_id TEXT,
+    current_period_start DATETIME,
+    current_period_end DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS checkout_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    tier TEXT NOT NULL,
+    billing TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+  CREATE INDEX IF NOT EXISTS idx_checkout_sessions_user ON checkout_sessions(user_id);
 `);
 
 // Migration: Add password_hash column if missing (for existing databases)
@@ -277,6 +308,9 @@ app.use('/api/invites', invitesRouter(db));
 
 // Account management routes (delete account, get account info)
 app.use('/api/account', accountRouter(db));
+
+// Subscription routes (plans, checkout, webhooks)
+app.use('/api/subscriptions', subscriptionsRouter(db));
 
 // Permission helpers - DEPRECATED: Use authMiddleware instead
 // Keeping for backward compatibility but marking as deprecated
