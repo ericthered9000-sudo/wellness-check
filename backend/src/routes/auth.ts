@@ -47,6 +47,8 @@ export default (db: betterSqlite3.Database) => {
       // Check if user already exists - use generic message to avoid enumeration
       const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
       if (existingUser) {
+        // SECURITY: Hash password anyway to normalize timing
+        await bcrypt.hash(password, 12);
         return res.status(409).json({
           success: false,
           error: 'Registration failed' // Generic to avoid user enumeration
@@ -83,10 +85,13 @@ export default (db: betterSqlite3.Database) => {
         path: '/'
       });
 
+      // SECURITY: Don't return token in response body - it's in the httpOnly cookie
+      // Note: Mobile apps (Expo) use Authorization header instead of cookies, 
+      // so we still return the token for mobile compatibility
       res.status(201).json({
         success: true,
         user: { id: userId, email, role },
-        token: token
+        token: token // Required for mobile apps using AsyncStorage
       });
     } catch (error) {
       console.error('Registration error:', error);
@@ -146,6 +151,8 @@ export default (db: betterSqlite3.Database) => {
         path: '/'
       });
 
+      // SECURITY: Token returned for mobile apps (Expo uses AsyncStorage)
+      // Web clients should use the httpOnly cookie instead
       res.json({
         success: true,
         user: { id: user.id, email: user.email, role: user.role },

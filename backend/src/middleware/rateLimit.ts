@@ -40,3 +40,27 @@ export const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Check-in limiter: 10 per minute (prevent spam)
+export const checkinLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 check-ins per minute
+  message: {
+    success: false,
+    error: 'Too many check-ins, please wait'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Connection limiter: 5 per hour (prevent abuse)
+export const connectionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 connection attempts per hour
+  message: {
+    success: false,
+    error: 'Too many connection attempts, please wait'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

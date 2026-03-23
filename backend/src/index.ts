@@ -19,7 +19,7 @@ import { AuthRequest } from './types/auth';
 import invitesRouter from './routes/invites';
 import accountRouter from './routes/account';
 import subscriptionsRouter from './routes/subscriptions';
-import { apiLimiter } from './middleware/rateLimit';
+import { apiLimiter, checkinLimiter, connectionLimiter } from './middleware/rateLimit';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -33,18 +33,27 @@ app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc)
     if (!origin) return callback(null, true);
-    // Allow specific origins
+    // Allow specific origins only - no wildcards
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:4173',
-      'https://frontend-j8fsgfacl-ericthered9000-3193s-projects.vercel.app',
-      'https://frontend-1f4yjreco-ericthered9000-3193s-projects.vercel.app',
-      'https://frontend-l3v2hytn2-ericthered9000-3193s-projects.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
       'capacitor://localhost',
+      'ionic://localhost',
       'http://localhost',
-      'ionic://localhost'
+      'https://lucid-growth-production-c2f0.up.railway.app',
+      // Expo development
+      'exp://localhost',
+      'exp://192.168.1.1',
     ];
-    if (allowedOrigins.includes(origin) || origin.startsWith('file://') || origin.includes('vercel.app')) {
+    // Also allow any origin that matches Expo's local network pattern
+    const isLocalExpo = origin && (
+      origin.startsWith('exp://192.168.') ||
+      origin.startsWith('exp://10.') ||
+      origin.startsWith('exp://172.')
+    );
+    if (allowedOrigins.includes(origin) || isLocalExpo) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
@@ -502,7 +511,7 @@ app.get('/api/wellness/:userId', authMiddleware, (req: AuthRequest, res) => {
 });
 
 // Family Connections API - Protected routes
-app.post('/api/connections', authMiddleware, (req: AuthRequest, res) => {
+app.post('/api/connections', authMiddleware, connectionLimiter, (req: AuthRequest, res) => {
   const { seniorId, familyMemberId, permissionLevel = 'view', role = 'viewer' } = req.body;
   
   // Users can only create connections for themselves
@@ -514,9 +523,39 @@ app.post('/api/connections', authMiddleware, (req: AuthRequest, res) => {
     return res.status(400).json({ error: 'Missing required fields: seniorId, familyMemberId' });
   }
   
-  const id = `${seniorId}-${familyMemberId}`;
-  
+  // SECURITY: Check subscription limits before allowing new connection
   try {
+    // Get senior's subscription tier
+    const subscription = db.prepare(`
+      SELECT tier FROM subscriptions WHERE user_id = ? AND status = 'active'
+    `).get(seniorId) as any;
+    
+    const tier = subscription?.tier || 'free';
+    const tierLimits: Record<string, number> = {
+      free: 1,
+      family: 5,
+      premium: 999999 // unlimited
+    };
+    
+    const maxFamilyMembers = tierLimits[tier] || 1;
+    
+    // Count current family members for this senior
+    const currentCount = db.prepare(`
+      SELECT COUNT(*) as count FROM family_connections WHERE senior_id = ?
+    `).get(seniorId) as { count: number };
+    
+    if (currentCount.count >= maxFamilyMembers) {
+      return res.status(403).json({ 
+        error: 'Subscription limit reached',
+        message: `Your ${tier} plan allows ${maxFamilyMembers} family member${maxFamilyMembers === 1 ? '' : 's'}. Upgrade to add more.`,
+        current: currentCount.count,
+        max: maxFamilyMembers,
+        tier: tier
+      });
+    }
+    
+    const id = `${seniorId}-${familyMemberId}`;
+    
     const stmt = db.prepare(
       'INSERT INTO family_connections (id, senior_id, family_member_id, permission_level, role) VALUES (?, ?, ?, ?, ?)'
     );
@@ -578,13 +617,11 @@ app.post('/api/connections/:id/role', authMiddleware, (req: AuthRequest, res) =>
   }
 });
 
-// Check-in API
-app.post('/api/checkin', (req, res) => {
-  const { userId, status, message } = req.body;
-  
-  if (!userId) {
-    return res.status(400).json({ error: 'Missing required field: userId' });
-  }
+// Check-in API - Protected route
+app.post('/api/checkin', authMiddleware, checkinLimiter, (req: AuthRequest, res) => {
+  // SECURITY: User can only check in for themselves
+  const userId = req.user!.id;
+  const { status, message } = req.body;
   
   const id = `${userId}-${Date.now()}`;
   

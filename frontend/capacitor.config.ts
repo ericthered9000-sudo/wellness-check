@@ -5,11 +5,12 @@ const config: CapacitorConfig = {
   appName: 'HomeBeacon',
   webDir: 'dist',
   server: {
-    // Load from Vercel URL instead of bundled assets
-    url: 'https://frontend-six-blond-57.vercel.app',
+    // Load from Vercel URL - THIS IS THE WORKING VERSION
+    url: 'https://frontend-j8fsgfacl-ericthered9000-3193s-projects.vercel.app',
     androidScheme: 'https',
     cleartext: true
   },
+  bundledWebRuntime: false,
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
