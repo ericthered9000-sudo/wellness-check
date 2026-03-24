@@ -1,6 +1,5 @@
 [build]
 builder = "NIXPACKS"
-rootDir = "backend"
 
 [build.nixpacks]
 installCmd = "npm install --workspaces --include-workspace-root"
