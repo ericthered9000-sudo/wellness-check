@@ -1,0 +1,10 @@
+[phases.setup]
+
+[phases.install]
+cmd = "npm install --workspaces --include-workspace-root"
+
+[phases.build]
+cmd = "npm run build --workspace=backend"
+
+[start]
+cmd = "npm start --workspace=backend"
