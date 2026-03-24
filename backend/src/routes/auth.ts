@@ -8,6 +8,16 @@ import * as betterSqlite3 from 'better-sqlite3';
 
 const router = Router();
 
+// Generate 8-character alphanumeric code
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 // Strong password validation - 12+ chars with complexity
 const passwordSchema = z.string()
   .min(12, 'Password must be at least 12 characters')
@@ -66,33 +76,70 @@ export default (db: betterSqlite3.Database) => {
         VALUES (?, ?, ?, ?)
       `).run(userId, email, role, password_hash);
 
-      // If senior, create senior profile
+      // Generate token
+      const token = generateToken({ id: userId, email, role });
+
+      // If senior, create senior profile AND generate invite code
       if (role === 'senior') {
         db.prepare(`
           INSERT INTO senior_profiles (user_id)
           VALUES (?)
         `).run(userId);
+        
+        // Generate invite code for senior
+        const inviteCode = `HB-${generateInviteCode()}`;
+        const inviteId = `invite-${userId}-${inviteCode}`;
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+        
+        // Create invite_codes table if not exists
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS invite_codes (
+            id TEXT PRIMARY KEY,
+            code TEXT UNIQUE NOT NULL,
+            senior_id TEXT NOT NULL,
+            used INTEGER DEFAULT 0,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (senior_id) REFERENCES users(id)
+          )
+        `);
+        
+        db.prepare(`
+          INSERT INTO invite_codes (id, code, senior_id, used, expires_at)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(inviteId, inviteCode, userId, 0, expiresAt.toISOString());
+        
+        // Set cookie and return user with invite code
+        res.cookie('auth_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: '/'
+        });
+        
+        res.status(201).json({
+          success: true,
+          user: { id: userId, email, role, inviteCode },
+          token: token
+        });
+      } else {
+        // Family member - no invite code needed
+        res.cookie('auth_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: '/'
+        });
+        
+        res.status(201).json({
+          success: true,
+          user: { id: userId, email, role },
+          token: token
+        });
       }
-
-      // Generate token and set as httpOnly cookie
-      const token = generateToken({ id: userId, email, role });
-
-      res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        path: '/'
-      });
-
-      // SECURITY: Don't return token in response body - it's in the httpOnly cookie
-      // Note: Mobile apps (Expo) use Authorization header instead of cookies, 
-      // so we still return the token for mobile compatibility
-      res.status(201).json({
-        success: true,
-        user: { id: userId, email, role },
-        token: token // Required for mobile apps using AsyncStorage
-      });
     } catch (error) {
       console.error('Registration error:', error);
       res.status(500).json({
@@ -151,11 +198,41 @@ export default (db: betterSqlite3.Database) => {
         path: '/'
       });
 
+      // If senior, get their invite code
+      let inviteCode = null;
+      if (user.role === 'senior') {
+        const invite = db.prepare(`
+          SELECT code FROM invite_codes 
+          WHERE senior_id = ? AND used = 0 
+          ORDER BY created_at DESC LIMIT 1
+        `).get(user.id) as { code: string } | undefined;
+        
+        if (invite) {
+          inviteCode = invite.code;
+        } else {
+          // Generate new code if none exists
+          inviteCode = `HB-${generateInviteCode()}`;
+          const inviteId = `invite-${user.id}-${inviteCode}`;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 7);
+          
+          db.prepare(`
+            INSERT INTO invite_codes (id, code, senior_id, used, expires_at)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(inviteId, inviteCode, user.id, 0, expiresAt.toISOString());
+        }
+      }
+
       // SECURITY: Token returned for mobile apps (Expo uses AsyncStorage)
       // Web clients should use the httpOnly cookie instead
       res.json({
         success: true,
-        user: { id: user.id, email: user.email, role: user.role },
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          role: user.role,
+          ...(inviteCode && { inviteCode })
+        },
         token: token
       });
     } catch (error) {
