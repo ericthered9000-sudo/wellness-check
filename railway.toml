@@ -1,6 +1,2 @@
 [build]
-builder = "NIXPACKS"
-
-[build.nixpacks]
-installCmd = "npm install --workspaces --include-workspace-root"
-startCmd = "npm start --workspace=backend"
+builder = "DOCKERFILE"
