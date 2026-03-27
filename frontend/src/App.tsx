@@ -17,6 +17,8 @@ import { OfflineIndicator } from './components/OfflineIndicator'
 import { EmergencyButton } from './components/EmergencyButton'
 import { Pricing } from './components/Pricing'
 import { Login } from './components/Login'
+import { SubscriptionSuccess } from './components/SubscriptionSuccess'
+import { SubscriptionCancel } from './components/SubscriptionCancel'
 import './components/OfflineIndicator.css'
 import './components/DisclaimerModal.css'
 import './components/PrivacyModal.css'
@@ -92,7 +94,7 @@ function disconnectSocket() {
 
 function App() {
   useTheme(); // Initialize theme context
-  const [view, setView] = useState<'home' | 'senior' | 'family' | 'pricing' | 'login'>('home');
+  const [view, setView] = useState<'home' | 'senior' | 'family' | 'pricing' | 'login' | 'subscription-success' | 'subscription-cancel'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [wellnessScore, setWellnessScore] = useState<WellnessScore | null>(null);
   const [alerts, setAlerts] = useState<Alert | null>(null);
@@ -152,6 +154,18 @@ function App() {
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  // Handle Stripe redirect URLs
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const path = window.location.pathname;
+
+    if (path.includes('/subscription/success') || urlParams.get('session_id')) {
+      setView('subscription-success');
+    } else if (path.includes('/subscription/cancel')) {
+      setView('subscription-cancel');
     }
   }, []);
 
@@ -451,13 +465,21 @@ function App() {
  {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
       {view === 'pricing' && (
         <main className="home">
-          <Pricing />
+          <Pricing user={user} token={user?.token} />
           <div className="demo-buttons" style={{ marginTop: '2rem' }}>
             <button className="btn btn-secondary" onClick={() => setView('home')}>
               ← Back to Home
             </button>
           </div>
         </main>
+      )}
+
+      {view === 'subscription-success' && (
+        <SubscriptionSuccess onBackToHome={() => setView('home')} />
+      )}
+
+      {view === 'subscription-cancel' && (
+        <SubscriptionCancel onBackToPricing={() => setView('pricing')} onBackToHome={() => setView('home')} />
       )}
 
       {view === 'home' && (

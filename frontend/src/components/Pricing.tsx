@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import './Pricing.css';
+import { API_URL } from '../config';
 
 interface PricingTier {
   name: string;
+  id: string;
   monthly: number;
   annual: number;
   seniors: string;
@@ -15,6 +17,7 @@ interface PricingTier {
 const tiers: PricingTier[] = [
   {
     name: 'Free',
+    id: 'free',
     monthly: 0,
     annual: 0,
     seniors: '1',
@@ -32,6 +35,7 @@ const tiers: PricingTier[] = [
   },
   {
     name: 'Family',
+    id: 'family',
     monthly: 9.99,
     annual: 99,
     seniors: '2',
@@ -47,10 +51,11 @@ const tiers: PricingTier[] = [
       'Privacy dashboard',
     ],
     highlighted: false,
-    cta: 'Start Free Trial',
+    cta: 'Start 7-Day Free Trial',
   },
   {
     name: 'Premium',
+    id: 'premium',
     monthly: 14.99,
     annual: 149,
     seniors: 'Unlimited',
@@ -67,19 +72,64 @@ const tiers: PricingTier[] = [
       '🔜 Calendar integration (v2)',
     ],
     highlighted: true,
-    cta: 'Start Free Trial',
+    cta: 'Start 7-Day Free Trial',
   },
 ];
 
-export function Pricing() {
-  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
+export function Pricing({ user, token }: { user: any; token?: string }) {
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubscribe = async (tier: string) => {
+    if (!user || !token) {
+      // Redirect to login
+      window.location.href = '/login?redirect=pricing';
+      return;
+    }
+
+    setLoading(tier);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/subscriptions/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tier: tier,
+          billing: billing,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <div className="pricing-container">
       <div className="pricing-header">
         <h1>Simple, Transparent Pricing</h1>
         <p className="pricing-subtitle">
-          Choose the plan that fits your family. All plans include a 14-day free trial.
+          Choose the plan that fits your family. All paid plans include a 7-day free trial.
         </p>
         
         <div className="billing-toggle">
@@ -101,6 +151,13 @@ export function Pricing() {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="error-message">
+          <p>⚠️ {error}</p>
+          <button onClick={() => setError(null)}>Dismiss</button>
+        </div>
+      )}
 
       <div className="pricing-grid">
         {tiers.map((tier) => (
@@ -155,9 +212,10 @@ export function Pricing() {
 
             <button
               className={`cta-button ${tier.highlighted ? 'primary' : 'secondary'}`}
-              disabled={tier.monthly === 0 && billing === 'annual'}
+              onClick={() => handleSubscribe(tier.id)}
+              disabled={loading === tier.id || (tier.monthly === 0 && billing === 'annual')}
             >
-              {tier.cta}
+              {loading === tier.id ? 'Loading...' : tier.cta}
             </button>
           </div>
         ))}
@@ -165,7 +223,7 @@ export function Pricing() {
 
       <div className="pricing-footer">
         <p className="guarantee">
-          🔒 No credit card required for free trial. Cancel anytime.
+          🔒 No credit card required until trial ends. Cancel anytime in settings.
         </p>
         <p className="note">
           <em>Business and church plans coming in v2 — contact us for volume pricing.</em>
