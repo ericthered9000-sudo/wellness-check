@@ -1,4 +1,5 @@
 import express from 'express';
+import { logger } from '../utils/logger';
 import { inviteLimiter } from '../middleware/rateLimit';
 
 const router = express.Router();
@@ -62,7 +63,7 @@ export default (db: any) => {
         expiresAt: expiresAt.toISOString() 
       });
     } catch (error: any) {
-      console.error('Failed to create invite code:', error);
+      logger.error('Failed to create invite code:', error);
       res.status(500).json({ error: 'Failed to generate invite code' });
     }
   });
@@ -112,7 +113,7 @@ export default (db: any) => {
         familyMemberId 
       });
     } catch (error: any) {
-      console.error('Failed to redeem invite code:', error);
+      logger.error('Failed to redeem invite code:', error);
       res.status(500).json({ error: 'Connection failed' });
     }
   });
@@ -122,7 +123,11 @@ export default (db: any) => {
     const { seniorId } = req.params;
     
     try {
-      const invite = db.prepare('SELECT * FROM invite_codes WHERE senior_id = ? AND used = 0').get(seniorId) as any;
+      // Check expiration in query - don't return expired codes
+      const invite = db.prepare(`
+        SELECT * FROM invite_codes 
+        WHERE senior_id = ? AND used = 0 AND expires_at > datetime('now')
+      `).get(seniorId) as any;
       
       if (!invite) {
         return res.status(404).json({ error: 'No active invite code' });
@@ -133,7 +138,7 @@ export default (db: any) => {
         expiresAt: invite.expires_at
       });
     } catch (error: any) {
-      console.error('Failed to fetch invite code:', error);
+      logger.error('Failed to fetch invite code:', error);
       res.status(500).json({ error: 'Failed to fetch invite code' });
     }
   });

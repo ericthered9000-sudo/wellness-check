@@ -1,4 +1,5 @@
 // Doctor Visits API Routes
+import { logger } from '../utils/logger';
 import { Router, Request, Response } from 'express';
 import {
   createVisit,
@@ -33,7 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(201).json(visit);
   } catch (error) {
-    console.error('Error creating visit:', error);
+    logger.error('Error creating visit:', error);
     res.status(500).json({ error: 'Failed to create visit' });
   }
 });
@@ -45,7 +46,7 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
     const visits = await getVisits(userId);
     res.json(visits);
   } catch (error) {
-    console.error('Error fetching visits:', error);
+    logger.error('Error fetching visits:', error);
     res.status(500).json({ error: 'Failed to fetch visits' });
   }
 });
@@ -57,7 +58,7 @@ router.get('/upcoming/:userId', async (req: Request, res: Response) => {
     const visits = await getUpcomingVisits(userId);
     res.json(visits);
   } catch (error) {
-    console.error('Error fetching upcoming visits:', error);
+    logger.error('Error fetching upcoming visits:', error);
     res.status(500).json({ error: 'Failed to fetch upcoming visits' });
   }
 });
@@ -72,7 +73,7 @@ router.get('/:visitId', async (req: Request, res: Response) => {
     }
     res.json(visit);
   } catch (error) {
-    console.error('Error fetching visit:', error);
+    logger.error('Error fetching visit:', error);
     res.status(500).json({ error: 'Failed to fetch visit' });
   }
 });
@@ -94,7 +95,7 @@ router.put('/:visitId', async (req: Request, res: Response) => {
     }
     res.json(visit);
   } catch (error) {
-    console.error('Error updating visit:', error);
+    logger.error('Error updating visit:', error);
     res.status(500).json({ error: 'Failed to update visit' });
   }
 });
@@ -106,7 +107,7 @@ router.delete('/:visitId', async (req: Request, res: Response) => {
     await deleteVisit(visitId);
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting visit:', error);
+    logger.error('Error deleting visit:', error);
     res.status(500).json({ error: 'Failed to delete visit' });
   }
 });
@@ -118,7 +119,7 @@ router.get('/notifications/:userId', async (req: Request, res: Response) => {
     const notifications = await getUserNotifications(userId);
     res.json(notifications);
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    logger.error('Error fetching notifications:', error);
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 });

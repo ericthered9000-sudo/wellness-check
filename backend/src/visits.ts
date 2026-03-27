@@ -1,5 +1,6 @@
 // Doctor Visit Service
 import Database, { Database as DatabaseType } from 'better-sqlite3';
+import { sanitizeText } from './utils/sanitize';
 
 export interface DoctorVisit {
   id: string;
@@ -85,12 +86,18 @@ export function createVisit(
   const id = generateId();
   const now = new Date().toISOString();
 
+  // Sanitize text fields to prevent XSS
+  const sanitizedDoctorName = sanitizeText(doctorName, 200);
+  const sanitizedSpecialty = specialty ? sanitizeText(specialty, 100) : '';
+  const sanitizedLocation = location ? sanitizeText(location, 200) : '';
+  const sanitizedNotes = notes ? sanitizeText(notes, 500) : '';
+
   const stmt = db.prepare(`
     INSERT INTO doctor_visits (id, user_id, doctor_name, specialty, date_time, location, notes, reminder_days_before, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  stmt.run(id, userId, doctorName, specialty || '', dateTime, location || '', notes || '', reminderDaysBefore, now, now);
+  stmt.run(id, userId, sanitizedDoctorName, sanitizedSpecialty, dateTime, sanitizedLocation, sanitizedNotes, reminderDaysBefore, now, now);
 
   // Create in-app reminder
   createReminder(id, userId, 'in_app', dateTime, reminderDaysBefore);
@@ -174,8 +181,14 @@ export function updateVisit(
 
   Object.entries(updates).forEach(([key, value]) => {
     if (value !== undefined) {
+      // Sanitize text fields
+      if (['doctor_name', 'specialty', 'location', 'notes'].includes(key)) {
+        const maxLength = key === 'notes' ? 500 : (key === 'specialty' ? 100 : 200);
+        values.push(sanitizeText(String(value), maxLength));
+      } else {
+        values.push(value);
+      }
       fields.push(`${key} = ?`);
-      values.push(value);
     }
   });
 

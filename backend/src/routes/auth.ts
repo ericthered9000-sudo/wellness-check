@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { logger } from '../utils/logger';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { generateToken, authMiddleware } from '../middleware/auth';
@@ -141,7 +142,7 @@ export default (db: betterSqlite3.Database) => {
         });
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       res.status(500).json({
         success: false,
         error: 'Registration failed'
@@ -236,7 +237,7 @@ export default (db: betterSqlite3.Database) => {
         token: token
       });
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       res.status(500).json({
         success: false,
         error: 'Login failed'
@@ -269,7 +270,7 @@ export default (db: betterSqlite3.Database) => {
 
       res.json({ success: true, user });
     } catch (error) {
-      console.error('Get user error:', error);
+      logger.error('Get user error:', error);
       res.status(500).json({
         success: false,
         error: 'Failed to get user'

@@ -4,6 +4,7 @@
  */
 
 import { Router, Response } from 'express';
+import { logger } from '../utils/logger';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest } from '../types/auth';
 import * as betterSqlite3 from 'better-sqlite3';
@@ -71,7 +72,7 @@ export default (db: betterSqlite3.Database) => {
         message: 'Account and all data permanently deleted'
       });
     } catch (error: any) {
-      console.error('Account deletion error:', error);
+      logger.error('Account deletion error:', error);
       res.status(500).json({
         success: false,
         error: 'Failed to delete account'
@@ -122,7 +123,7 @@ export default (db: betterSqlite3.Database) => {
         }
       });
     } catch (error: any) {
-      console.error('Get account error:', error);
+      logger.error('Get account error:', error);
       res.status(500).json({
         success: false,
         error: 'Failed to get account info'

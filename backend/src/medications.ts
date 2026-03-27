@@ -4,6 +4,7 @@
  */
 
 import Database from 'better-sqlite3';
+import { sanitizeText } from './utils/sanitize';
 
 const db = new Database('./wellness.db');
 
@@ -226,12 +227,15 @@ export function logMedicationTaken(medicationId: string, userId: string, notes?:
   const id = `log-${medicationId}-${Date.now()}`;
   const now = new Date().toISOString();
   
+  // Sanitize notes to prevent XSS
+  const sanitizedNotes = notes ? sanitizeText(notes, 500) : null;
+  
   // Create log entry
   const logStmt = db.prepare(`
     INSERT INTO medication_logs (id, medication_id, user_id, taken_at, status, notes, created_at)
     VALUES (?, ?, ?, ?, 'taken', ?, ?)
   `);
-  logStmt.run(id, medicationId, userId, now, notes || null, now);
+  logStmt.run(id, medicationId, userId, now, sanitizedNotes, now);
   
   // Update medication's last_taken
   const medStmt = db.prepare('UPDATE medications SET last_taken = ?, next_due = ? WHERE id = ?');
@@ -257,11 +261,14 @@ export function logMedicationSkipped(medicationId: string, userId: string, reaso
   const id = `log-${medicationId}-${Date.now()}`;
   const now = new Date().toISOString();
   
+  // Sanitize reason to prevent XSS
+  const sanitizedReason = reason ? sanitizeText(reason, 200) : null;
+  
   const stmt = db.prepare(`
     INSERT INTO medication_logs (id, medication_id, user_id, taken_at, status, notes, created_at)
     VALUES (?, ?, ?, ?, 'skipped', ?, ?)
   `);
-  stmt.run(id, medicationId, userId, now, reason || null, now);
+  stmt.run(id, medicationId, userId, now, sanitizedReason, now);
   
   // Update next_due
   const medication = getMedication(medicationId);

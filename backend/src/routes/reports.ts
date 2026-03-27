@@ -3,6 +3,7 @@
  */
 
 import express from 'express';
+import { logger } from '../utils/logger';
 import { getWeeklyReport, getWeeklyReports, generateWeeklyReport } from '../reports';
 
 const router = express.Router();
@@ -34,7 +35,7 @@ router.get('/weekly/:userId', (req, res) => {
     
     res.json(report);
   } catch (error: any) {
-    console.error('Failed to get weekly report:', error);
+    logger.error('Failed to get weekly report:', error);
     res.status(500).json({ error: 'Failed to get weekly report' });
   }
 });
@@ -51,7 +52,7 @@ router.get('/weekly/:userId/all', (req, res) => {
     const reports = getWeeklyReports(userId, weeks);
     res.json(reports);
   } catch (error: any) {
-    console.error('Failed to get weekly reports:', error);
+    logger.error('Failed to get weekly reports:', error);
     res.status(500).json({ error: 'Failed to get weekly reports' });
   }
 });
@@ -68,7 +69,7 @@ router.post('/weekly/:userId/generate', (req, res) => {
     const report = generateWeeklyReport(userId, weekStart);
     res.status(201).json(report);
   } catch (error: any) {
-    console.error('Failed to generate weekly report:', error);
+    logger.error('Failed to generate weekly report:', error);
     res.status(500).json({ error: 'Failed to generate weekly report' });
   }
 });

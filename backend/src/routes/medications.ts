@@ -3,6 +3,8 @@
  */
 
 import express from 'express';
+import { z } from 'zod';
+import { logger } from '../utils/logger';
 import {
   createMedication,
   getMedication,
@@ -16,6 +18,7 @@ import {
   getMedicationsDueToday,
   getOverdueMedications
 } from '../medications';
+import { notesSchema, reasonSchema, instructionsSchema } from '../utils/sanitize';
 
 const router = express.Router();
 
@@ -40,19 +43,28 @@ router.post('/', (req, res) => {
     });
   }
   
+  // Validate instructions if provided
+  const instructionsResult = instructionsSchema.safeParse(instructions);
+  if (instructions !== undefined && !instructionsResult.success) {
+    return res.status(400).json({ 
+      error: 'Invalid instructions format',
+      details: instructionsResult.error.issues 
+    });
+  }
+  
   try {
     const medication = createMedication({ 
       userId, 
       name, 
       dosage, 
       unit, 
-      instructions, 
+      instructions: instructionsResult?.data, 
       schedule, 
       times 
     });
     res.status(201).json(medication);
   } catch (error: any) {
-    console.error('Failed to create medication:', error);
+    logger.error('Failed to create medication', error);
     res.status(500).json({ error: 'Failed to create medication' });
   }
 });
@@ -68,7 +80,7 @@ router.get('/:userId', (req, res) => {
     const medications = getMedications(userId);
     res.json(medications);
   } catch (error: any) {
-    console.error('Failed to get medications:', error);
+    logger.error('Failed to get medications:', error);
     res.status(500).json({ error: 'Failed to get medications' });
   }
 });
@@ -87,7 +99,7 @@ router.get('/detail/:id', (req, res) => {
     }
     res.json(medication);
   } catch (error: any) {
-    console.error('Failed to get medication:', error);
+    logger.error('Failed to get medication:', error);
     res.status(500).json({ error: 'Failed to get medication' });
   }
 });
@@ -116,7 +128,7 @@ router.put('/:id', (req, res) => {
     
     res.json(medication);
   } catch (error: any) {
-    console.error('Failed to update medication:', error);
+    logger.error('Failed to update medication:', error);
     res.status(500).json({ error: 'Failed to update medication' });
   }
 });
@@ -135,7 +147,7 @@ router.delete('/:id', (req, res) => {
     }
     res.json({ success: true, message: 'Medication deleted' });
   } catch (error: any) {
-    console.error('Failed to delete medication:', error);
+    logger.error('Failed to delete medication:', error);
     res.status(500).json({ error: 'Failed to delete medication' });
   }
 });
@@ -154,11 +166,20 @@ router.post('/:id/taken', (req, res) => {
     return res.status(400).json({ error: 'Missing userId' });
   }
   
+  // Validate and sanitize notes
+  const notesResult = notesSchema.safeParse(notes);
+  if (!notesResult.success) {
+    return res.status(400).json({ 
+      error: 'Invalid notes format',
+      details: notesResult.error.issues 
+    });
+  }
+  
   try {
-    const log = logMedicationTaken(id, userId, notes);
+    const log = logMedicationTaken(id, userId, notesResult.data);
     res.status(201).json(log);
   } catch (error: any) {
-    console.error('Failed to log medication taken:', error);
+    logger.error('Failed to log medication taken:', error);
     res.status(500).json({ error: 'Failed to log medication' });
   }
 });
@@ -175,11 +196,20 @@ router.post('/:id/skipped', (req, res) => {
     return res.status(400).json({ error: 'Missing userId' });
   }
   
+  // Validate and sanitize reason
+  const reasonResult = reasonSchema.safeParse(reason);
+  if (!reasonResult.success) {
+    return res.status(400).json({ 
+      error: 'Invalid reason format',
+      details: reasonResult.error.issues 
+    });
+  }
+  
   try {
-    const log = logMedicationSkipped(id, userId, reason);
+    const log = logMedicationSkipped(id, userId, reasonResult.data);
     res.status(201).json(log);
   } catch (error: any) {
-    console.error('Failed to log medication skipped:', error);
+    logger.error('Failed to log medication skipped:', error);
     res.status(500).json({ error: 'Failed to log medication' });
   }
 });
@@ -196,7 +226,7 @@ router.get('/logs/:userId', (req, res) => {
     const logs = getMedicationLogs(userId, days);
     res.json(logs);
   } catch (error: any) {
-    console.error('Failed to get medication logs:', error);
+    logger.error('Failed to get medication logs:', error);
     res.status(500).json({ error: 'Failed to get medication logs' });
   }
 });
@@ -215,7 +245,7 @@ router.get('/adherence/:userId', (req, res) => {
     const adherence = calculateAdherence(userId, days);
     res.json(adherence);
   } catch (error: any) {
-    console.error('Failed to calculate adherence:', error);
+    logger.error('Failed to calculate adherence:', error);
     res.status(500).json({ error: 'Failed to calculate adherence' });
   }
 });
@@ -231,7 +261,7 @@ router.get('/due/:userId', (req, res) => {
     const due = getMedicationsDueToday(userId);
     res.json(due);
   } catch (error: any) {
-    console.error('Failed to get due medications:', error);
+    logger.error('Failed to get due medications:', error);
     res.status(500).json({ error: 'Failed to get due medications' });
   }
 });
@@ -247,7 +277,7 @@ router.get('/overdue/:userId', (req, res) => {
     const overdue = getOverdueMedications(userId);
     res.json(overdue);
   } catch (error: any) {
-    console.error('Failed to get overdue medications:', error);
+    logger.error('Failed to get overdue medications:', error);
     res.status(500).json({ error: 'Failed to get overdue medications' });
   }
 });

@@ -13,7 +13,7 @@ export const authLimiter = rateLimit({
     success: false,
     error: 'Too many attempts, please try again later'
   },
-  standardHeaders: true,
+  standardHeaders: true, // Adds X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
   legacyHeaders: false,
 });
 
@@ -25,7 +25,7 @@ export const inviteLimiter = rateLimit({
     success: false,
     error: 'Too many invite code attempts. Please wait and try again later.'
   },
-  standardHeaders: true,
+  standardHeaders: true, // Adds X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
   legacyHeaders: false,
 });
 
@@ -37,7 +37,7 @@ export const apiLimiter = rateLimit({
     success: false,
     error: 'Too many requests, please slow down'
   },
-  standardHeaders: true,
+  standardHeaders: true, // Adds X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
   legacyHeaders: false,
 });
 
@@ -49,7 +49,7 @@ export const checkinLimiter = rateLimit({
     success: false,
     error: 'Too many check-ins, please wait'
   },
-  standardHeaders: true,
+  standardHeaders: true, // Adds X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
   legacyHeaders: false,
 });
 
@@ -61,6 +61,6 @@ export const connectionLimiter = rateLimit({
     success: false,
     error: 'Too many connection attempts, please wait'
   },
-  standardHeaders: true,
+  standardHeaders: true, // Adds X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
   legacyHeaders: false,
 });

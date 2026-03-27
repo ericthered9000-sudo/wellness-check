@@ -7,10 +7,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import { logger } from './utils/logger';
 import { analyzeWellness, recordDailyScore, checkForAlerts } from './pattern';
 import medicationsRouter from './routes/medications';
 import reportsRouter from './routes/reports';
 import visitsRouter from './routes/visits';
+import wellnessRouter from './routes/wellness';
 import { initVisits } from './visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
 import authRouter from './routes/auth';
@@ -28,7 +30,13 @@ const PORT = process.env.PORT || 3001;
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  }
+}));
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc)
@@ -56,12 +64,22 @@ app.use(cors({
     if (allowedOrigins.includes(origin) || isLocalExpo) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      logger.debug('CORS blocked origin', { origin });
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
 }));
+
+// HTTPS enforcement middleware (for self-hosting, Railway handles HTTPS termination)
+app.use((req, res, next) => {
+  if (!req.secure && process.env.NODE_ENV === 'production' && process.env.FORCE_HTTPS !== 'false') {
+    logger.debug('Redirecting to HTTPS', { url: req.url });
+    return res.redirect(`https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -82,7 +100,7 @@ if (dbDir && !existsSync(dbDir)) {
   mkdirSync(dbDir, { recursive: true });
 }
 
-console.log(`Database path: ${dbPath}`);
+logger.info('Database initialized', { path: dbPath });
 const db = new Database(dbPath);
 
 // Initialize database schema
@@ -209,11 +227,12 @@ db.exec(`
     user_id TEXT NOT NULL,
     tier TEXT NOT NULL DEFAULT 'free' CHECK(tier IN ('free', 'family', 'premium')),
     billing_cycle TEXT DEFAULT 'monthly' CHECK(billing_cycle IN ('monthly', 'annual')),
-    status TEXT DEFAULT 'active' CHECK(status IN ('active', 'cancelled', 'expired')),
-    stripe_subscription_id TEXT,
+    status TEXT DEFAULT 'active' CHECK(status IN ('active', 'trialing', 'cancelled', 'expired', 'unpaid')),
+    stripe_subscription_id TEXT UNIQUE,
     stripe_customer_id TEXT,
     current_period_start DATETIME,
     current_period_end DATETIME,
+    cancel_at_period_end INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -224,11 +243,15 @@ db.exec(`
     user_id TEXT NOT NULL,
     tier TEXT NOT NULL,
     billing TEXT NOT NULL,
-    price INTEGER NOT NULL,
+    stripe_session_id TEXT UNIQUE,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON subscriptions(stripe_subscription_id);
+  CREATE INDEX IF NOT EXISTS idx_checkout_sessions_user ON checkout_sessions(user_id);
 
   CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
   CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
@@ -238,10 +261,10 @@ db.exec(`
 // Migration: Add password_hash column if missing (for existing databases)
 try {
   db.exec(`ALTER TABLE users ADD COLUMN password_hash TEXT;`);
-  console.log('✅ Migration: Added password_hash column');
+  logger.info('Migration: Added password_hash column');
 } catch (e) {
   // Column already exists - that's fine
-  console.log('✓ password_hash column already exists');
+  logger.debug('password_hash column already exists');
 }
 
 // Create HTTP server for Socket.io
@@ -256,20 +279,20 @@ const io = new Server(server, {
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log(`WebSocket client connected: ${socket.id}`);
+  logger.debug('WebSocket client connected', { socketId: socket.id });
 
   socket.on('join:user', (userId: string) => {
     socket.join(`user:${userId}`);
-    console.log(`Socket ${socket.id} joined room user:${userId}`);
+    logger.debug('Socket joined user room', { socketId: socket.id, room: `user:${userId}` });
   });
 
   socket.on('join:family', (seniorId: string) => {
     socket.join(`family:${seniorId}`);
-    console.log(`Socket ${socket.id} joined family room for senior:${seniorId}`);
+    logger.debug('Socket joined family room', { socketId: socket.id, room: `family:${seniorId}` });
   });
 
   socket.on('disconnect', () => {
-    console.log(`WebSocket client disconnected: ${socket.id}`);
+    logger.debug('WebSocket client disconnected', { socketId: socket.id });
   });
 });
 
@@ -296,35 +319,38 @@ app.get('/health', (req, res) => {
 });
 
 // Register auth routes FIRST before other middleware
-console.log('Registering auth routes...');
-app.use('/api/auth', authRouter(db));
-console.log('Auth routes registered');
+logger.debug('Registering auth routes...');
+app.use('/api/v1/auth', authRouter(db));
+logger.debug('Auth routes registered');
+
+// Wellness routes (must be before medications to avoid route conflicts)
+app.use('/api/v1/wellness', wellnessRouter(db));
 
 // Medication routes
-app.use('/api/medications', medicationsRouter);
+app.use('/api/v1/medications', medicationsRouter);
 
 // Weekly reports routes
-app.use('/api/reports', reportsRouter);
+app.use('/api/v1/reports', reportsRouter);
 
 // Doctor visits routes
-app.use('/api/visits', visitsRouter);
+app.use('/api/v1/visits', visitsRouter);
 
 // Initialize visits tables
 initVisits(db as any);
 
 // Invite code routes for family connections
-app.use('/api/invites', invitesRouter(db));
+app.use('/api/v1/invites', invitesRouter(db));
 
 // Account management routes (delete account, get account info)
-app.use('/api/account', accountRouter(db));
+app.use('/api/v1/account', accountRouter(db));
 
 // Subscription routes (plans, checkout, webhooks)
-app.use('/api/subscriptions', subscriptionsRouter(db));
+app.use('/api/v1/subscriptions', subscriptionsRouter(db));
 
 // Permission helpers - DEPRECATED: Use authMiddleware instead
 // Keeping for backward compatibility but marking as deprecated
 function setUserPermissions(req: express.Request, res: express.Response, next: express.NextFunction) {
-  console.warn('WARNING: setUserPermissions is deprecated. Use authMiddleware for protected routes.');
+  logger.warn('setUserPermissions is deprecated. Use authMiddleware for protected routes.');
   const userId = req.headers['x-user-id'] as string;
   if (!userId) {
     req.userId = 'demo-user';
@@ -612,7 +638,7 @@ app.post('/api/connections/:id/role', authMiddleware, (req: AuthRequest, res) =>
     
     res.json({ success: true, role });
   } catch (error: any) {
-    console.error('Failed to update role:', error);
+    logger.error('Failed to update role', error);
     res.status(500).json({ error: 'Failed to update role' });
   }
 });
@@ -775,8 +801,8 @@ app.get('/api/alerts/:userId', authMiddleware, (req: AuthRequest, res) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`🏥 Wellness Check API running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`⚡ WebSocket server ready`);
-  console.log(`🔐 Auth routes: /api/auth/register, /api/auth/login`);
+  logger.info('Wellness Check API running', { port: PORT, url: `http://localhost:${PORT}` });
+  logger.info('Health check endpoint', { url: `http://localhost:${PORT}/health` });
+  logger.info('WebSocket server ready');
+  logger.info('Auth routes registered', { routes: ['/api/auth/register', '/api/auth/login'] });
 });
