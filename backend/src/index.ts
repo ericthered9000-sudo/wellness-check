@@ -13,6 +13,8 @@ import medicationsRouter from './routes/medications';
 import reportsRouter from './routes/reports';
 import visitsRouter from './routes/visits';
 import wellnessRouter from './routes/wellness';
+import activityRoutes from './routes/activity';
+import alertsRoutes from './routes/alerts';
 import { initVisits } from './visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
 import authRouter from './routes/auth';
@@ -269,6 +271,8 @@ try {
 
 // Create HTTP server for Socket.io
 const server = createServer(app);
+
+// Socket.io instance
 const io = new Server(server, {
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
@@ -276,6 +280,11 @@ const io = new Server(server, {
     methods: ['GET', 'POST']
   }
 });
+
+// Export io for use in alert routes
+export function getIo(): Server {
+  return io;
+}
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -346,6 +355,12 @@ app.use('/api/v1/account', accountRouter(db));
 
 // Subscription routes (plans, checkout, webhooks)
 app.use('/api/v1/subscriptions', subscriptionsRouter(db));
+
+// Activity tracking routes (passive sensor data)
+app.use('/api/v1/activity', activityRoutes(db));
+
+// Alerts routes (fall detection, no-movement alerts)
+app.use('/api/v1/alerts', alertsRoutes(db, io));
 
 // Permission helpers - DEPRECATED: Use authMiddleware instead
 // Keeping for backward compatibility but marking as deprecated
