@@ -1,5 +1,6 @@
 import 'dotenv/config'; // Load .env file
 import express from 'express';
+import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import Database from 'better-sqlite3';
@@ -23,6 +24,7 @@ import { AuthRequest } from './types/auth';
 import invitesRouter from './routes/invites';
 import accountRouter from './routes/account';
 import subscriptionsRouter from './routes/subscriptions';
+import revenuecatRouter from './routes/revenuecat';
 import { apiLimiter, checkinLimiter, connectionLimiter } from './middleware/rateLimit';
 
 const app = express();
@@ -84,6 +86,9 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Serve static files for privacy policy, terms, etc.
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Apply general API rate limiter to all routes
 app.use('/api', apiLimiter);
@@ -355,6 +360,7 @@ app.use('/api/v1/account', accountRouter(db));
 
 // Subscription routes (plans, checkout, webhooks)
 app.use('/api/v1/subscriptions', subscriptionsRouter(db));
+app.use('/api/v1/revenuecat', revenuecatRouter(db));
 
 // Activity tracking routes (passive sensor data)
 app.use('/api/v1/activity', activityRoutes(db));
