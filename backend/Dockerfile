@@ -25,4 +25,4 @@ ENV PORT=8080
 ENV NODE_ENV=production
 
 # Start the backend
-CMD [npm, start]
+CMD ["npm", "start"]
