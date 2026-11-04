@@ -1,11 +1,12 @@
 # Use Node.js LTS
-FROM node:20-slim
+FROM node:22-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files for root AND backend (npm workspaces)
 COPY package*.json ./
+COPY backend/package*.json ./backend/
 
 # Install dependencies
 RUN npm install
@@ -24,4 +25,4 @@ ENV PORT=8080
 ENV NODE_ENV=production
 
 # Start the backend
-CMD ["npm", "start"]
+CMD [npm, start]

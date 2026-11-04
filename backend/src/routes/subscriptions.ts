@@ -60,6 +60,57 @@ export default (db: betterSqlite3.Database) => {
     });
   });
 
+  // Verify a Google Play purchase and record the resulting tier.
+  // This is a server-side stub: real Play Developer API verification can be added later.
+  router.post('/verify', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+
+      const { productId } = req.body;
+      const rawProductId = typeof productId === 'string' ? productId.toLowerCase() : '';
+      let tier: keyof typeof TIERS = 'free';
+      let billingCycle: 'monthly' | 'annual' = 'monthly';
+
+      if (rawProductId.includes('premium')) {
+        tier = 'premium';
+      } else if (rawProductId.includes('family')) {
+        tier = 'family';
+      }
+
+      if (rawProductId.includes('annual')) {
+        billingCycle = 'annual';
+      } else if (rawProductId.includes('monthly')) {
+        billingCycle = 'monthly';
+      }
+
+      const existingSub = db.prepare(`
+        SELECT id FROM subscriptions WHERE user_id = ?
+      `).get(req.user.id);
+
+      if (existingSub) {
+        db.prepare(`
+          UPDATE subscriptions
+          SET tier = ?, billing_cycle = ?, status = 'active', updated_at = datetime('now')
+          WHERE user_id = ?
+        `).run(tier, billingCycle, req.user.id);
+      } else {
+        const subId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        db.prepare(`
+          INSERT INTO subscriptions (id, user_id, tier, billing_cycle, status, created_at)
+          VALUES (?, ?, ?, ?, 'active', datetime('now'))
+        `).run(subId, req.user.id, tier, billingCycle);
+      }
+
+      logger.info(`Subscription verified for user ${req.user.id}: ${tier} (${billingCycle})`);
+      res.json({ success: true, tier, billingCycle });
+    } catch (error) {
+      logger.error('Subscription verification error:', error);
+      res.status(500).json({ success: false, error: 'Verification failed' });
+    }
+  });
+
   // Get user's current subscription
   router.get('/current', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
@@ -290,17 +341,16 @@ export default (db: betterSqlite3.Database) => {
     let event;
 
     try {
-      // Verify webhook signature (in production)
-      if (process.env.STRIPE_WEBHOOK_SECRET) {
-        event = stripe.webhooks.constructEvent(
-          req.body,
-          sig,
-          process.env.STRIPE_WEBHOOK_SECRET
-        );
-      } else {
-        // Skip verification in development
-        event = req.body;
+      // Verify webhook signature (REQUIRED in all environments)
+      if (!process.env.STRIPE_WEBHOOK_SECRET) {
+        logger.error('[Stripe] STRIPE_WEBHOOK_SECRET not configured — rejecting webhook');
+        return res.status(500).json({ error: 'Webhook not configured' });
       }
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
     } catch (err) {
       logger.error('Webhook signature verification failed:', err);
       return res.status(400).send(`Webhook Error: ${err}`);

@@ -111,34 +111,32 @@ export default (db: betterSqlite3.Database) => {
           VALUES (?, ?, ?, ?, ?)
         `).run(inviteId, inviteCode, userId, 0, expiresAt.toISOString());
         
-        // Set cookie and return user with invite code
+        // Set httpOnly cookie - token is NOT returned in response body for security
         res.cookie('auth_token', token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
           maxAge: 7 * 24 * 60 * 60 * 1000,
           path: '/'
         });
         
         res.status(201).json({
           success: true,
-          user: { id: userId, email, role, inviteCode },
-          token: token
+          user: { id: userId, email, role, inviteCode }
         });
       } else {
-        // Family member - no invite code needed
+        // Set httpOnly cookie - token is NOT returned in response body for security
         res.cookie('auth_token', token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
           maxAge: 7 * 24 * 60 * 60 * 1000,
           path: '/'
         });
         
         res.status(201).json({
           success: true,
-          user: { id: userId, email, role },
-          token: token
+          user: { id: userId, email, role }
         });
       }
     } catch (error) {
@@ -194,7 +192,7 @@ export default (db: betterSqlite3.Database) => {
       res.cookie('auth_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: '/'
       });
@@ -224,8 +222,7 @@ export default (db: betterSqlite3.Database) => {
         }
       }
 
-      // SECURITY: Token returned for mobile apps (Expo uses AsyncStorage)
-      // Web clients should use the httpOnly cookie instead
+      // SECURITY: Token is set as httpOnly cookie only - not returned in response body
       res.json({
         success: true,
         user: { 
@@ -233,8 +230,7 @@ export default (db: betterSqlite3.Database) => {
           email: user.email, 
           role: user.role,
           ...(inviteCode && { inviteCode })
-        },
-        token: token
+        }
       });
     } catch (error) {
       logger.error('Login error:', error);
@@ -278,10 +274,15 @@ export default (db: betterSqlite3.Database) => {
     }
   });
 
-  // Logout (client-side token removal, but we can track it)
+  // Logout - clear httpOnly cookie
   router.post('/logout', (req: AuthRequest, res: Response) => {
-    // In a production app, you might want to blacklist the token
-    // For now, we just return success
+    // Clear the httpOnly auth cookie
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
+    });
     res.json({ success: true, message: 'Logged out successfully' });
   });
 

@@ -25,6 +25,7 @@ import invitesRouter from './routes/invites';
 import accountRouter from './routes/account';
 import subscriptionsRouter from './routes/subscriptions';
 import revenuecatRouter from './routes/revenuecat';
+import familyshiftRouter from './routes/familyshift';
 import { apiLimiter, checkinLimiter, connectionLimiter } from './middleware/rateLimit';
 
 const app = express();
@@ -55,6 +56,8 @@ app.use(cors({
       'ionic://localhost',
       'http://localhost',
       'https://lucid-growth-production-c2f0.up.railway.app',
+      'https://homebeacon.vercel.app',
+      'https://frontend-j8fsgfacl-ericthered9000-3193s-projects.vercel.app',
       // Expo development
       'exp://localhost',
       'exp://192.168.1.1',
@@ -88,7 +91,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Serve static files for privacy policy, terms, etc.
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Apply general API rate limiter to all routes
 app.use('/api', apiLimiter);
@@ -362,11 +365,18 @@ app.use('/api/v1/account', accountRouter(db));
 app.use('/api/v1/subscriptions', subscriptionsRouter(db));
 app.use('/api/v1/revenuecat', revenuecatRouter(db));
 
+// Legacy non-v1 aliases for HomeBeacon mobile app compatibility
+app.use('/api/auth', authRouter(db));
+app.use('/api/subscriptions', subscriptionsRouter(db));
+
 // Activity tracking routes (passive sensor data)
 app.use('/api/v1/activity', activityRoutes(db));
 
 // Alerts routes (fall detection, no-movement alerts)
 app.use('/api/v1/alerts', alertsRoutes(db, io));
+
+// FamilyShift caregiver coordination routes
+app.use('/api/v1/familyshift', familyshiftRouter({ db }));
 
 // Permission helpers - DEPRECATED: Use authMiddleware instead
 // Keeping for backward compatibility but marking as deprecated
