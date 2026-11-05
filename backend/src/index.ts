@@ -369,8 +369,10 @@ app.use('/api/v1/revenuecat', revenuecatRouter(db));
 app.use('/api/auth', authRouter(db));
 app.use('/api/subscriptions', subscriptionsRouter(db));
 
-// Activity tracking routes (passive sensor data)
-app.use('/api/v1/activity', activityRoutes(db));
+// Activity tracking routes - use legacy-compatible v1 aliases (the router file has a 
+// schema mismatch on the live deployment, so we mirror the working /api/activity 
+// handlers here at the v1 path for mobile app compatibility).
+// app.use('/api/v1/activity', activityRoutes(db));
 
 // v1 aliases for activity (mirror legacy /api/activity handlers so the mobile app works)
 app.post('/api/v1/activity', authMiddleware, (req: AuthRequest, res) => {
