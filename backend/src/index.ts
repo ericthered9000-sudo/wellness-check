@@ -372,6 +372,78 @@ app.use('/api/subscriptions', subscriptionsRouter(db));
 // Activity tracking routes (passive sensor data)
 app.use('/api/v1/activity', activityRoutes(db));
 
+// v1 aliases for activity (mirror legacy /api/activity handlers so the mobile app works)
+app.post('/api/v1/activity', authMiddleware, (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { type, value } = req.body;
+
+  if (!type) {
+    return res.status(400).json({ error: 'Missing required field: type' });
+  }
+
+  const id = `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  try {
+    const stmt = db.prepare(
+      'INSERT INTO activity_events (id, user_id, type, value) VALUES (?, ?, ?, ?)'
+    );
+    stmt.run(id, userId, type, JSON.stringify(value || null));
+
+    const score = recordDailyScore(db, userId);
+
+    const newActivity = { id, userId, type, timestamp: new Date().toISOString() };
+    emitWellnessUpdate(userId, { type: 'activity', data: newActivity });
+
+    const connections = db.prepare(
+      'SELECT family_member_id FROM family_connections WHERE senior_id = ?'
+    ).all(userId);
+
+    connections.forEach((conn: any) => {
+      emitFamilyUpdate(conn.family_member_id, {
+        type: 'activity',
+        data: newActivity
+      });
+    });
+
+    res.status(201).json({ id, userId, type, timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to record activity' });
+  }
+});
+
+app.get('/api/v1/activity/:userId', authMiddleware, (req: AuthRequest, res) => {
+  const { userId } = req.params;
+
+  if (req.user && req.user.id !== userId) {
+    const connection = db.prepare(
+      'SELECT * FROM family_connections WHERE senior_id = ? AND family_member_id = ?'
+    ).get(userId, req.user.id);
+
+    if (!connection) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
+
+  const { since, limit = '100' } = req.query;
+
+  let query = 'SELECT * FROM activity_events WHERE user_id = ?';
+  const params: any[] = [userId];
+
+  if (since) {
+    query += ' AND timestamp >= ?';
+    params.push(since);
+  }
+
+  query += ' ORDER BY timestamp DESC LIMIT ?';
+  params.push(parseInt(limit as string));
+
+  const events = db.prepare(query).all(...params);
+  res.json(events.map((e: any) => ({
+    ...e,
+    value: e.value ? JSON.parse(e.value) : null
+  })));
+});
+
 // Alerts routes (fall detection, no-movement alerts)
 app.use('/api/v1/alerts', alertsRoutes(db, io));
 
@@ -675,7 +747,7 @@ app.post('/api/connections/:id/role', authMiddleware, (req: AuthRequest, res) =>
 });
 
 // Check-in API - Protected route
-app.post('/api/checkin', authMiddleware, checkinLimiter, (req: AuthRequest, res) => {
+app.post(['/api/checkin', '/api/v1/checkin'], authMiddleware, checkinLimiter, (req: AuthRequest, res) => {
   // SECURITY: User can only check in for themselves
   const userId = req.user!.id;
   const { status, message } = req.body;
