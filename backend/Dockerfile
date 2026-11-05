@@ -1,28 +1,15 @@
-# Use Node.js LTS
+# HomeBeacon backend standalone build (context = backend/ only)
 FROM node:22-slim
 
-# Set working directory
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy package files for root AND backend (npm workspaces)
 COPY package*.json ./
-COPY backend/package*.json ./backend/
+RUN npm install && npm rebuild better-sqlite3
 
-# Install dependencies
-RUN npm install
-
-# Copy source code
 COPY . .
-
-# Build TypeScript to JavaScript
 RUN npm run build
 
-# Expose port
-EXPOSE 8080
-
-# Set environment variable for port
-ENV PORT=8080
-ENV NODE_ENV=production
-
-# Start the backend
-CMD ["npm", "start"]
+EXPOSE 3000
+CMD [ "npm", "run", "start" ]
