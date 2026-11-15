@@ -81,6 +81,38 @@ export default (db: betterSqlite3.Database) => {
   });
 
   /**
+   * PATCH /api/account/profile - Update user display name
+   */
+  router.patch('/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+      
+      const { display_name } = req.body;
+      if (display_name === undefined) {
+        return res.status(400).json({ error: 'display_name is required' });
+      }
+
+      // Validation: length and sanitization
+      if (display_name.length > 100) {
+        return res.status(400).json({ error: 'Display name too long (max 100 chars)' });
+      }
+
+      const sanitizedName = display_name.trim();
+
+      const result = db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(sanitizedName, req.user.id);
+      
+      if (result.changes === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({ success: true, display_name: sanitizedName });
+    } catch (error: any) {
+      logger.error('Profile update error:', error);
+      res.status(500).json({ error: 'Failed to update profile' });
+    }
+  });
+
+  /**
    * GET /api/account - Get current user account info
    */
   router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -93,7 +125,7 @@ export default (db: betterSqlite3.Database) => {
       }
 
       const user = db.prepare(`
-        SELECT id, email, role, created_at
+        SELECT id, email, role, display_name, created_at
         FROM users
         WHERE id = ?
       `).get(req.user.id);
@@ -115,6 +147,7 @@ export default (db: betterSqlite3.Database) => {
           id: user.id,
           email: user.email,
           role: user.role,
+          displayName: user.display_name,
           createdAt: user.created_at
         },
         stats: {
