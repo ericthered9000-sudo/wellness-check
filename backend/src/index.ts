@@ -17,7 +17,7 @@ import wellnessRouter from './routes/wellness';
 import activityRoutes from './routes/activity';
 import alertsRoutes from './routes/alerts';
 import { initVisits } from './visits';
-import { setDb as setMedsDb } from './medications';
+import { setDb as setMedsDb, initMedicationTables } from './medications';
 import { setMedicationsRouteDb } from './routes/medications';
 import { setVisitsRouteDb } from './routes/visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
@@ -118,6 +118,7 @@ const db = new Database(dbPath);
 
 // Inject DB into medications service
 setMedsDb(db);
+initMedicationTables();
 
 // Inject DB into route modules for connection-scoped access checks
 setMedicationsRouteDb(db);

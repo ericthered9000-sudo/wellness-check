@@ -450,5 +450,4 @@ function isToday(dateStr: string): boolean {
   return date.toDateString() === today.toDateString();
 }
 
-// Initialize tables on module load
-initMedicationTables();
+// Tables initialized from index.ts AFTER db injection (self-init at import crashed the container)
