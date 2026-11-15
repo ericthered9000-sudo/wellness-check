@@ -31,8 +31,7 @@ const passwordSchema = z.string()
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: passwordSchema,
-  role: z.enum(['senior', 'family']),
-  display_name: z.string().optional()
+  role: z.enum(['senior', 'family'])
 });
 
 const loginSchema = z.object({
@@ -54,7 +53,7 @@ export default (db: betterSqlite3.Database) => {
         });
       }
 
-      const { email, password, role, display_name } = validation.data;
+      const { email, password, role } = validation.data;
 
       // Check if user already exists - use generic message to avoid enumeration
       const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
@@ -74,9 +73,9 @@ export default (db: betterSqlite3.Database) => {
       const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       db.prepare(`
-        INSERT INTO users (id, email, role, password_hash, display_name)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(userId, email, role, password_hash, display_name || null);
+        INSERT INTO users (id, email, role, password_hash)
+        VALUES (?, ?, ?, ?)
+      `).run(userId, email, role, password_hash);
 
       // Generate token
       const token = generateToken({ id: userId, email, role });

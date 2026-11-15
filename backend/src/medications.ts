@@ -6,11 +6,7 @@
 import Database from 'better-sqlite3';
 import { sanitizeText } from './utils/sanitize';
 
-let db: any;
-
-export function setDb(database: any) {
-  db = database;
-}
+const db = new Database('./wellness.db');
 
 // Initialize medication tables
 export function initMedicationTables(): void {

@@ -2,7 +2,7 @@
  * Medication API Routes
  */
 
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import {
@@ -20,58 +20,15 @@ import {
 } from '../medications';
 import { notesSchema, reasonSchema, instructionsSchema } from '../utils/sanitize';
 
-import { authMiddleware } from '../middleware/auth';
-import { AuthRequest } from '../types/auth';
-
 const router = express.Router();
 
-// DB injected from index.ts so access checks share the app's database instance
-let routeDb: any;
-
-export function setMedicationsRouteDb(database: any) {
-  routeDb = database;
-}
-
-const canAccessSenior = (callerId: string | undefined, seniorId: string | undefined): boolean => {
-  if (!callerId || !seniorId) return false;
-  if (callerId === seniorId) return true;
-  if (!routeDb) return false;
-  return !!routeDb.prepare(
-    'SELECT 1 FROM family_connections WHERE senior_id = ? AND family_member_id = ?'
-  ).get(seniorId, callerId);
-};
-
-// For routes carrying :userId — caller must be the senior or a connected family member
-const withSeniorAccess = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (!canAccessSenior(req.user?.id, req.params.userId)) {
-    return res.status(403).json({ error: 'Access denied: No connection to this senior' });
-  }
-  return next();
-};
-
-// For routes carrying :id (medication-scoped) — check the medication's owner
-const withMedicationAccess = (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const med = getMedication(req.params.id);
-    if (!med) return res.status(404).json({ error: 'Medication not found' });
-    if (!canAccessSenior(req.user?.id, med.user_id)) {
-      return res.status(403).json({ error: 'Access denied: No connection to this senior' });
-    }
-    return next();
-  } catch (error) {
-    logger.error('Medication access check failed:', error);
-    return res.status(500).json({ error: 'Access check failed' });
-  }
-};
-
-// Auth required for every medication route; ownership checks per route below
-router.use(authMiddleware);
+// ==================== Medications ====================
 
 /**
  * Create a new medication
  * POST /api/medications
  */
-router.post('/', (req: AuthRequest, res) => {
+router.post('/', (req, res) => {
   const { userId, name, dosage, unit, instructions, schedule, times } = req.body;
   
   if (!userId || !name || !schedule || !times) {
@@ -79,12 +36,7 @@ router.post('/', (req: AuthRequest, res) => {
       error: 'Missing required fields: userId, name, schedule, times' 
     });
   }
-
-  // Access: creating for yourself or for a connected senior
-  if (!canAccessSenior(req.user?.id, userId)) {
-    return res.status(403).json({ error: 'Access denied: No connection to this senior' });
-  }
-
+  
   if (!Array.isArray(times) || times.length === 0) {
     return res.status(400).json({ 
       error: 'Times must be a non-empty array of times (e.g., ["08:00", "20:00"])' 
@@ -121,7 +73,7 @@ router.post('/', (req: AuthRequest, res) => {
  * Get all medications for a user
  * GET /api/medications/:userId
  */
-router.get('/:userId', withSeniorAccess, (req, res) => {
+router.get('/:userId', (req, res) => {
   const { userId } = req.params;
   
   try {
@@ -137,7 +89,7 @@ router.get('/:userId', withSeniorAccess, (req, res) => {
  * Get a single medication
  * GET /api/medications/detail/:id
  */
-router.get('/detail/:id', withMedicationAccess, (req, res) => {
+router.get('/detail/:id', (req, res) => {
   const { id } = req.params;
   
   try {
@@ -156,7 +108,7 @@ router.get('/detail/:id', withMedicationAccess, (req, res) => {
  * Update a medication
  * PUT /api/medications/:id
  */
-router.put('/:id', withMedicationAccess, (req, res) => {
+router.put('/:id', (req, res) => {
   const { id } = req.params;
   const { name, dosage, unit, instructions, schedule, times } = req.body;
   
@@ -185,7 +137,7 @@ router.put('/:id', withMedicationAccess, (req, res) => {
  * Delete (deactivate) a medication
  * DELETE /api/medications/:id
  */
-router.delete('/:id', withMedicationAccess, (req, res) => {
+router.delete('/:id', (req, res) => {
   const { id } = req.params;
   
   try {
@@ -206,7 +158,7 @@ router.delete('/:id', withMedicationAccess, (req, res) => {
  * Log medication as taken
  * POST /api/medications/:id/taken
  */
-router.post('/:id/taken', withMedicationAccess, (req, res) => {
+router.post('/:id/taken', (req, res) => {
   const { id } = req.params;
   const { userId, notes } = req.body;
   
@@ -236,7 +188,7 @@ router.post('/:id/taken', withMedicationAccess, (req, res) => {
  * Log medication as skipped
  * POST /api/medications/:id/skipped
  */
-router.post('/:id/skipped', withMedicationAccess, (req, res) => {
+router.post('/:id/skipped', (req, res) => {
   const { id } = req.params;
   const { userId, reason } = req.body;
   
@@ -266,7 +218,7 @@ router.post('/:id/skipped', withMedicationAccess, (req, res) => {
  * Get medication logs for a user
  * GET /api/medications/logs/:userId
  */
-router.get('/logs/:userId', withSeniorAccess, (req, res) => {
+router.get('/logs/:userId', (req, res) => {
   const { userId } = req.params;
   const days = parseInt(req.query.days as string) || 7;
   
@@ -285,7 +237,7 @@ router.get('/logs/:userId', withSeniorAccess, (req, res) => {
  * Get medication adherence stats
  * GET /api/medications/adherence/:userId
  */
-router.get('/adherence/:userId', withSeniorAccess, (req, res) => {
+router.get('/adherence/:userId', (req, res) => {
   const { userId } = req.params;
   const days = parseInt(req.query.days as string) || 7;
   
@@ -302,7 +254,7 @@ router.get('/adherence/:userId', withSeniorAccess, (req, res) => {
  * Get medications due today
  * GET /api/medications/due/:userId
  */
-router.get('/due/:userId', withSeniorAccess, (req, res) => {
+router.get('/due/:userId', (req, res) => {
   const { userId } = req.params;
   
   try {
@@ -318,7 +270,7 @@ router.get('/due/:userId', withSeniorAccess, (req, res) => {
  * Get overdue medications
  * GET /api/medications/overdue/:userId
  */
-router.get('/overdue/:userId', withSeniorAccess, (req, res) => {
+router.get('/overdue/:userId', (req, res) => {
   const { userId } = req.params;
   
   try {

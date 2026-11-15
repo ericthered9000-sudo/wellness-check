@@ -17,9 +17,6 @@ import wellnessRouter from './routes/wellness';
 import activityRoutes from './routes/activity';
 import alertsRoutes from './routes/alerts';
 import { initVisits } from './visits';
-import { setDb as setMedsDb } from './medications';
-import { setMedicationsRouteDb } from './routes/medications';
-import { setVisitsRouteDb } from './routes/visits';
 import { checkPermission, PERMISSION_LEVELS } from './permissions';
 import authRouter from './routes/auth';
 import { authMiddleware } from './middleware/auth';
@@ -116,20 +113,12 @@ if (dbDir && !existsSync(dbDir)) {
 logger.info('Database initialized', { path: dbPath });
 const db = new Database(dbPath);
 
-// Inject DB into medications service
-setMedsDb(db);
-
-// Inject DB into route modules for connection-scoped access checks
-setMedicationsRouteDb(db);
-setVisitsRouteDb(db);
-
 // Initialize database schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT,
-    display_name TEXT,
     role TEXT NOT NULL CHECK(role IN ('senior', 'family')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -288,13 +277,6 @@ try {
   logger.debug('password_hash column already exists');
 }
 
-try {
-  db.exec(`ALTER TABLE users ADD COLUMN display_name TEXT;`);
-  logger.info('Migration: Added display_name column');
-} catch (e) {
-  logger.debug('display_name column already exists');
-}
-
 // Create HTTP server for Socket.io
 const server = createServer(app);
 
@@ -373,20 +355,7 @@ app.use('/api/v1/visits', visitsRouter);
 // Initialize visits tables
 initVisits(db as any);
 
-// v1 aliases for connections and invites
-app.use('/api/v1/connections', (req, res, next) => {
-  req.url = req.url.replace(/^\//, ''); 
-  // Map /api/v1/connections/family/:id -> /api/connections/family/:id
-  next();
-});
-app.get('/api/v1/connections/family/:familyMemberId', authMiddleware, (req: AuthRequest, res) => {
-  const { familyMemberId } = req.params;
-  const connections = db.prepare(
-    'SELECT fc.*, u.email as senior_email, u.display_name as senior_name FROM family_connections fc JOIN users u ON fc.senior_id = u.id WHERE fc.family_member_id = ?'
-  ).all(familyMemberId);
-  res.json(connections);
-});
-
+// Invite code routes for family connections
 app.use('/api/v1/invites', invitesRouter(db));
 
 // Account management routes (delete account, get account info)
@@ -737,7 +706,7 @@ app.get('/api/connections/family/:familyMemberId', authMiddleware, (req: AuthReq
     return res.status(403).json({ error: 'Access denied' });
   }
   const connections = db.prepare(
-    'SELECT fc.*, u.email as senior_email, u.display_name as senior_name FROM family_connections fc JOIN users u ON fc.senior_id = u.id WHERE fc.family_member_id = ?'
+    'SELECT fc.*, u.email as senior_email FROM family_connections fc JOIN users u ON fc.senior_id = u.id WHERE fc.family_member_id = ?'
   ).all(req.params.familyMemberId);
   res.json(connections);
 });
