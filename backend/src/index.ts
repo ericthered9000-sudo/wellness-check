@@ -375,11 +375,6 @@ app.use('/api/v1/visits', visitsRouter);
 initVisits(db as any);
 
 // v1 aliases for connections and invites
-app.use('/api/v1/connections', (req, res, next) => {
-  req.url = req.url.replace(/^\//, ''); 
-  // Map /api/v1/connections/family/:id -> /api/connections/family/:id
-  next();
-});
 app.get('/api/v1/connections/family/:familyMemberId', authMiddleware, (req: AuthRequest, res) => {
   const { familyMemberId } = req.params;
   const connections = db.prepare(
