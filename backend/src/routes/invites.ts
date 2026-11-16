@@ -70,10 +70,10 @@ export default (db: any) => {
 
   // POST /api/invites/redeem - Family member redeems code - with rate limiting
   router.post('/redeem', inviteLimiter, (req, res) => {
-    const { code, familyMemberId, seniorId } = req.body;
+    const { code, familyMemberId } = req.body;
     
-    if (!code || !familyMemberId || !seniorId) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!code || !familyMemberId) {
+      return res.status(400).json({ error: 'Missing required fields: code, familyMemberId' });
     }
     
     try {
@@ -92,15 +92,12 @@ export default (db: any) => {
         return res.status(410).json({ error: 'Connection failed' }); // Generic
       }
       
-      // Verify code belongs to this senior
-      if (invite.senior_id !== seniorId) {
-        return res.status(400).json({ error: 'Connection failed' }); // Generic
-      }
-      
+
       // Mark code as used
       db.prepare('UPDATE invite_codes SET used = 1 WHERE id = ?').run(invite.id);
       
       // Create family connection
+      const seniorId = invite.senior_id;
       const connectionId = `${seniorId}-${familyMemberId}`;
       const stmt = db.prepare(
         'INSERT INTO family_connections (id, senior_id, family_member_id, permission_level, role) VALUES (?, ?, ?, ?, ?)'
