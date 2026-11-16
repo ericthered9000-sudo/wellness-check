@@ -93,7 +93,13 @@ router.get('/user/:userId', withSeniorAccess, async (req: Request, res: Response
   try {
     const { userId } = req.params;
     const visits = await getVisits(userId);
-    res.json(visits);
+    const now = Date.now();
+    res.json(
+      visits.map((v) => ({
+        ...v,
+        status: new Date(v.date_time).getTime() > now ? 'upcoming' : 'past',
+      }))
+    );
   } catch (error) {
     logger.error('Error fetching visits:', error);
     res.status(500).json({ error: 'Failed to fetch visits' });
@@ -131,12 +137,26 @@ router.get('/:visitId', withVisitAccess, async (req: Request, res: Response) => 
 router.put('/:visitId', withVisitAccess, async (req: Request, res: Response) => {
   try {
     const { visitId } = req.params;
-    const updates = req.body;
 
-    // Don't allow updating id or user_id
-    delete updates.id;
-    delete updates.user_id;
-    delete updates.created_at;
+    // Normalize camelCase (app) -> snake_case (storage) and WHITELIST keys
+    // (interpolating unknown keys into SQL raises no-such-column -> 500)
+    const raw = req.body || {};
+    const keyMap: Record<string, string> = {
+      doctorName: 'doctor_name',
+      dateTime: 'date_time',
+      reminderDaysBefore: 'reminder_days_before',
+      doctor_name: 'doctor_name',
+      date_time: 'date_time',
+      specialty: 'specialty',
+      location: 'location',
+      notes: 'notes',
+      reminder_days_before: 'reminder_days_before',
+    };
+    const updates: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      const col = keyMap[k];
+      if (col) updates[col] = v;
+    }
 
     const visit = await updateVisit(visitId, updates);
     if (!visit) {

@@ -244,8 +244,10 @@ router.post('/:id/skipped', withMedicationAccess, (req, res) => {
     return res.status(400).json({ error: 'Missing userId' });
   }
   
-  // Validate and sanitize reason
-  const reasonResult = reasonSchema.safeParse(reason);
+  // Validate and sanitize reason (app omits it; default keeps schema happy)
+  const reasonResult = reasonSchema.safeParse(
+    typeof reason === 'string' && reason.trim() !== '' ? reason : 'Skipped'
+  );
   if (!reasonResult.success) {
     return res.status(400).json({ 
       error: 'Invalid reason format',
