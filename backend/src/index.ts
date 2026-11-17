@@ -298,6 +298,27 @@ try {
   logger.debug('display_name column already exists');
 }
 
+// Migration: legacy alerts tables used `senior_id` and lacked rich columns.
+try {
+  const alertsColumns = db.prepare(`PRAGMA table_info(alerts)`).all() as { name: string }[];
+  const hasColumn = (col: string) => alertsColumns.some(c => c.name === col);
+  const needsLegacyCopy = alertsColumns.some(c => c.name === 'senior_id');
+
+  if (!hasColumn('user_id')) db.exec(`ALTER TABLE alerts ADD COLUMN user_id TEXT`);
+  if (!hasColumn('level')) db.exec(`ALTER TABLE alerts ADD COLUMN level TEXT`);
+  if (!hasColumn('message')) db.exec(`ALTER TABLE alerts ADD COLUMN message TEXT`);
+  if (!hasColumn('data')) db.exec(`ALTER TABLE alerts ADD COLUMN data TEXT`);
+  if (!hasColumn('acknowledged')) db.exec(`ALTER TABLE alerts ADD COLUMN acknowledged INTEGER DEFAULT 0`);
+  if (!hasColumn('acknowledged_at')) db.exec(`ALTER TABLE alerts ADD COLUMN acknowledged_at DATETIME`);
+
+  if (needsLegacyCopy) {
+    db.exec(`UPDATE alerts SET user_id = senior_id WHERE user_id IS NULL`);
+  }
+  logger.info('Migration: alerts columns verified');
+} catch (e) {
+  logger.warn('Migration: alerts columns verification failed (may already exist)', { error: e });
+}
+
 // Create HTTP server for Socket.io
 const server = createServer(app);
 
@@ -838,32 +859,13 @@ app.post(['/api/checkin', '/api/v1/checkin'], authMiddleware, checkinLimiter, (r
         return res.status(400).json({ error: 'Family check-ins must use status: pending' });
       }
 
-      // Resolve senior from the provided userId (a connected senior) or fall back to
-      // the most recent family connection.
-      const requestedSeniorId = req.body.userId;
-      let connection: { senior_id: string } | undefined;
-
-      if (requestedSeniorId) {
-        connection = db.prepare(`
-          SELECT senior_id FROM family_connections
-          WHERE senior_id = ? AND family_member_id = ?
-          LIMIT 1
-        `).get(requestedSeniorId, user.id) as { senior_id: string } | undefined;
-
-        if (!connection) {
-          return res.status(403).json({
-            error: 'No connection to the requested senior.'
-          });
-        }
-      }
-
-      if (!connection) {
-        connection = db.prepare(`
-          SELECT senior_id FROM family_connections
-          WHERE family_member_id = ?
-          ORDER BY created_at DESC LIMIT 1
-        `).get(user.id) as { senior_id: string } | undefined;
-      }
+      // Resolve the connected senior for this family member (ignore any body.userId
+      // provided by the client and always pick the most recent family connection).
+      const connection = db.prepare(`
+        SELECT senior_id FROM family_connections
+        WHERE family_member_id = ?
+        ORDER BY created_at DESC LIMIT 1
+      `).get(user.id) as { senior_id: string } | undefined;
 
       if (!connection) {
         return res.status(403).json({
@@ -875,10 +877,11 @@ app.post(['/api/checkin', '/api/v1/checkin'], authMiddleware, checkinLimiter, (r
       const requestId = `${user.id}-request-${Date.now()}`;
 
       db.prepare(`
-        INSERT INTO alerts (id, user_id, type, level, message, data, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO alerts (id, senior_id, user_id, type, level, message, data, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         requestId,
+        seniorId,
         seniorId,
         'checkin_request',
         'info',
