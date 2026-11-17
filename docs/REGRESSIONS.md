@@ -65,10 +65,18 @@ command in this doc.
 ## Invites & Redemption
 
 | # | What must survive | Where it lives | How to verify |
-|---|-------------------|----------------|---------------|
+|---|---|-------------------|----------------|---------------|
 | 26 | `POST /api/v1/invites` creates an invite code for a senior | `backend/src/routes/invites.ts` + `backend/src/index.ts` line ~388 | `curl -X POST -H "Authorization: Bearer ***" http://localhost:3001/api/v1/invites` |
 | 27 | `GET /api/v1/invites/:seniorId` returns the senior's invite code | `backend/src/routes/invites.ts` + `backend/src/index.ts` | `curl ...` |
 | 28 | `POST /api/v1/redeem` resolves the senior from the invite code server-side and creates a family connection | `backend/src/routes/invites.ts` lines ~62-95 + `backend/src/index.ts` line ~388 | Family token + body `{ "code": "..." }` returns senior user object and connection |
+
+## Subscriptions & Google Play Verification
+
+| # | What must survive | Where it lives | How to verify |
+|---|---|-------------------|----------------|---------------|
+| 29 | `POST /api/v1/subscriptions/verify` and `POST /api/subscriptions/verify` require a `purchaseToken`; without one they return `422` | `backend/src/routes/subscriptions.ts` | `curl -X POST -H "Authorization: Bearer ***" http://localhost:3001/api/v1/subscriptions/verify -H 'Content-Type: application/json' -d '{"productId":"homebeacon_premium_monthly"}'` must return HTTP 422 |
+| 30 | Server-side Google Play verification calls `purchases.subscriptions.get` using the env-injected service account and grants entitlement only for active paid or valid trial purchases | `backend/src/routes/subscriptions.ts` | With a valid test purchase token, route returns `200 { success: true, tier, billingCycle }` and writes a row with `purchase_token`, `product_id`, `verified_at`, `current_period_end`, `payment_state`, and `offer_info` |
+| 31 | Stripe webhook route continues to exist and verify signatures | `backend/src/routes/subscriptions.ts` | `curl -X POST http://localhost:3001/api/v1/subscriptions/webhook -H "Stripe-Signature: test" -d '{}' ` returns a non-404 response (signature failure is acceptable) |
 
 ## Smoke-Test Script
 

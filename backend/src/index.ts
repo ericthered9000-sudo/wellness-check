@@ -319,6 +319,26 @@ try {
   logger.warn('Migration: alerts columns verification failed (may already exist)', { error: e });
 }
 
+// Migration: Add Google Play subscription verification columns if missing
+try {
+  const subscriptionColumns = db.prepare(`PRAGMA table_info(subscriptions)`).all() as { name: string }[];
+  const hasSubscriptionColumn = (col: string) => subscriptionColumns.some(c => c.name === col);
+
+  if (!hasSubscriptionColumn('purchase_token')) db.exec(`ALTER TABLE subscriptions ADD COLUMN purchase_token TEXT`);
+  if (!hasSubscriptionColumn('product_id')) db.exec(`ALTER TABLE subscriptions ADD COLUMN product_id TEXT`);
+  if (!hasSubscriptionColumn('package_name')) db.exec(`ALTER TABLE subscriptions ADD COLUMN package_name TEXT`);
+  if (!hasSubscriptionColumn('verified_at')) db.exec(`ALTER TABLE subscriptions ADD COLUMN verified_at DATETIME`);
+  if (!hasSubscriptionColumn('payment_state')) db.exec(`ALTER TABLE subscriptions ADD COLUMN payment_state INTEGER`);
+  if (!hasSubscriptionColumn('subscription_state')) db.exec(`ALTER TABLE subscriptions ADD COLUMN subscription_state INTEGER`);
+  if (!hasSubscriptionColumn('offer_info')) db.exec(`ALTER TABLE subscriptions ADD COLUMN offer_info TEXT`);
+
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_subscriptions_token ON subscriptions(purchase_token)`);
+
+  logger.info('Migration: Google Play subscription columns verified');
+} catch (e) {
+  logger.warn('Migration: Google Play subscription columns verification failed (may already exist)', { error: e });
+}
+
 // Create HTTP server for Socket.io
 const server = createServer(app);
 

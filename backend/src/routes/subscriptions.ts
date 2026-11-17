@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
+import { google, type androidpublisher_v3 } from 'googleapis';
 import { logger } from '../utils/logger';
 import { authMiddleware } from '../middleware/auth';
 import { AuthRequest } from '../types/auth';
@@ -11,6 +12,69 @@ const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2026-03-25.dahlia',
 });
+
+// Lazy-initialized Google Play Android Publisher client (env-injected credentials).
+let playPublisher: androidpublisher_v3.Androidpublisher | null = null;
+
+function loadServiceAccountCredentials(): Record<string, unknown> {
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    try {
+      return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    } catch (e) {
+      throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_JSON: not valid JSON');
+    }
+  }
+
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_B64) {
+    try {
+      const json = Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8');
+      return JSON.parse(json);
+    } catch (e) {
+      throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_B64: not valid base64 JSON');
+    }
+  }
+
+  throw new Error(
+    'Google Play service account not configured. Set GOOGLE_SERVICE_ACCOUNT_B64 or GOOGLE_SERVICE_ACCOUNT_JSON.'
+  );
+}
+
+function getPlayPublisher(): androidpublisher_v3.Androidpublisher {
+  if (playPublisher) {
+    return playPublisher;
+  }
+
+  const credentials = loadServiceAccountCredentials();
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/androidpublisher'],
+  });
+
+  playPublisher = google.androidpublisher({ version: 'v3', auth });
+  return playPublisher;
+}
+
+function isEntitled(purchase: androidpublisher_v3.Schema$SubscriptionPurchase): boolean {
+  // v3 purchases.subscriptions.get uses paymentState:
+  // 0=pending, 1=payment received (active), 2=free trial, 3=pending deferred.
+  const paymentState = purchase.paymentState;
+  const autoRenewing = purchase.autoRenewing;
+  const expiryTimeMillis = purchase.expiryTimeMillis ? parseInt(purchase.expiryTimeMillis, 10) : 0;
+
+  if (expiryTimeMillis <= Date.now()) {
+    return false;
+  }
+
+  if (autoRenewing !== true) {
+    return false;
+  }
+
+  return paymentState === 1 || paymentState === 2;
+}
+
+function playStatus(purchase: androidpublisher_v3.Schema$SubscriptionPurchase): 'active' | 'trialing' {
+  return purchase.paymentState === 2 ? 'trialing' : 'active';
+}
 
 // Subscription tiers configuration
 export const TIERS = {
@@ -60,16 +124,28 @@ export default (db: betterSqlite3.Database) => {
     });
   });
 
-  // Verify a Google Play purchase and record the resulting tier.
-  // This is a server-side stub: real Play Developer API verification can be added later.
+  // Verify a Google Play purchase with the Play Developer API.
+  // Expected payload: { productId, purchaseToken, packageName? }
   router.post('/verify', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       if (!req.user) {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
 
-      const { productId } = req.body;
-      const rawProductId = typeof productId === 'string' ? productId.toLowerCase() : '';
+      const { productId, purchaseToken, packageName } = req.body;
+
+      if (!purchaseToken || typeof purchaseToken !== 'string') {
+        return res.status(422).json({
+          success: false,
+          error: 'purchaseToken is required for server-side verification'
+        });
+      }
+
+      if (!productId || typeof productId !== 'string') {
+        return res.status(400).json({ success: false, error: 'productId is required' });
+      }
+
+      const rawProductId = productId.toLowerCase();
       let tier: keyof typeof TIERS = 'free';
       let billingCycle: 'monthly' | 'annual' = 'monthly';
 
@@ -85,6 +161,49 @@ export default (db: betterSqlite3.Database) => {
         billingCycle = 'monthly';
       }
 
+      const verifiedPackageName = typeof packageName === 'string' && packageName.trim()
+        ? packageName.trim()
+        : 'com.homebeacon.app';
+
+      const publisher = getPlayPublisher();
+      const response = await publisher.purchases.subscriptions.get({
+        packageName: verifiedPackageName,
+        subscriptionId: productId,
+        token: purchaseToken,
+      });
+      const purchase = response.data;
+
+      if (!isEntitled(purchase)) {
+        logger.warn('Google Play purchase not entitled', {
+          userId: req.user.id,
+          productId,
+          packageName: verifiedPackageName,
+          paymentState: purchase.paymentState,
+          autoRenewing: purchase.autoRenewing,
+          expiryTimeMillis: purchase.expiryTimeMillis,
+        });
+        return res.status(400).json({
+          success: false,
+          error: 'Purchase is not active or in a valid trial'
+        });
+      }
+
+      const status = playStatus(purchase);
+      const expiryTime = purchase.expiryTimeMillis
+        ? new Date(parseInt(purchase.expiryTimeMillis, 10)).toISOString()
+        : null;
+
+      const offerInfo = JSON.stringify({
+        paymentState: purchase.paymentState,
+        autoRenewing: purchase.autoRenewing,
+        expiryTimeMillis: purchase.expiryTimeMillis,
+        priceCurrencyCode: purchase.priceCurrencyCode,
+        priceAmountMicros: purchase.priceAmountMicros,
+        countryCode: purchase.countryCode,
+        orderId: purchase.orderId,
+        startTimeMillis: purchase.startTimeMillis,
+      });
+
       const existingSub = db.prepare(`
         SELECT id FROM subscriptions WHERE user_id = ?
       `).get(req.user.id);
@@ -92,21 +211,48 @@ export default (db: betterSqlite3.Database) => {
       if (existingSub) {
         db.prepare(`
           UPDATE subscriptions
-          SET tier = ?, billing_cycle = ?, status = 'active', updated_at = datetime('now')
+          SET tier = ?, billing_cycle = ?, status = ?, product_id = ?, purchase_token = ?,
+              package_name = ?, current_period_end = ?, verified_at = datetime('now'),
+              payment_state = ?, subscription_state = ?, offer_info = ?, updated_at = datetime('now')
           WHERE user_id = ?
-        `).run(tier, billingCycle, req.user.id);
+        `).run(
+          tier,
+          billingCycle,
+          status,
+          productId,
+          purchaseToken,
+          verifiedPackageName,
+          expiryTime,
+          purchase.paymentState ?? null,
+          null,
+          offerInfo,
+          req.user.id
+        );
       } else {
         const subId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         db.prepare(`
-          INSERT INTO subscriptions (id, user_id, tier, billing_cycle, status, created_at)
-          VALUES (?, ?, ?, ?, 'active', datetime('now'))
-        `).run(subId, req.user.id, tier, billingCycle);
+          INSERT INTO subscriptions (
+            id, user_id, tier, billing_cycle, status, product_id, purchase_token, package_name,
+            current_period_end, verified_at, payment_state, subscription_state, offer_info, created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, datetime('now'))
+        `).run(
+          subId, req.user.id, tier, billingCycle, status, productId, purchaseToken,
+          verifiedPackageName, expiryTime, purchase.paymentState ?? null, null, offerInfo
+        );
       }
 
-      logger.info(`Subscription verified for user ${req.user.id}: ${tier} (${billingCycle})`);
+      logger.info(`Google Play subscription verified for user ${req.user.id}: ${tier} (${billingCycle}) ${status}`, {
+        productId,
+        packageName: verifiedPackageName,
+        paymentState: purchase.paymentState,
+      });
       res.json({ success: true, tier, billingCycle });
-    } catch (error) {
-      logger.error('Subscription verification error:', error);
+    } catch (error: any) {
+      logger.error('Google Play subscription verification error:', {
+        error: error?.message || error,
+        stack: error?.stack,
+      });
       res.status(500).json({ success: false, error: 'Verification failed' });
     }
   });
