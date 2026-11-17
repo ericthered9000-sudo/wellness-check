@@ -838,11 +838,32 @@ app.post(['/api/checkin', '/api/v1/checkin'], authMiddleware, checkinLimiter, (r
         return res.status(400).json({ error: 'Family check-ins must use status: pending' });
       }
 
-      const connection = db.prepare(`
-        SELECT senior_id FROM family_connections
-        WHERE family_member_id = ?
-        ORDER BY created_at DESC LIMIT 1
-      `).get(user.id) as { senior_id: string } | undefined;
+      // Resolve senior from the provided userId (a connected senior) or fall back to
+      // the most recent family connection.
+      const requestedSeniorId = req.body.userId;
+      let connection: { senior_id: string } | undefined;
+
+      if (requestedSeniorId) {
+        connection = db.prepare(`
+          SELECT senior_id FROM family_connections
+          WHERE senior_id = ? AND family_member_id = ?
+          LIMIT 1
+        `).get(requestedSeniorId, user.id) as { senior_id: string } | undefined;
+
+        if (!connection) {
+          return res.status(403).json({
+            error: 'No connection to the requested senior.'
+          });
+        }
+      }
+
+      if (!connection) {
+        connection = db.prepare(`
+          SELECT senior_id FROM family_connections
+          WHERE family_member_id = ?
+          ORDER BY created_at DESC LIMIT 1
+        `).get(user.id) as { senior_id: string } | undefined;
+      }
 
       if (!connection) {
         return res.status(403).json({
