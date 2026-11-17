@@ -179,13 +179,15 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS alerts (
     id TEXT PRIMARY KEY,
-    senior_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
     type TEXT NOT NULL,
-    triggered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    acknowledged_by TEXT,
-    resolved_at DATETIME,
+    level TEXT,
+    message TEXT,
+    data TEXT,
+    acknowledged INTEGER DEFAULT 0,
+    acknowledged_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (senior_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
   CREATE TABLE IF NOT EXISTS medications (
@@ -341,7 +343,7 @@ function emitFamilyUpdate(seniorId: string, data: any) {
   io.to(`family:${seniorId}`).emit('wellness:family_update', data);
 }
 
-function emitAlertNotification(seniorId: string, alert: string) {
+function emitAlertNotification(seniorId: string, alert: any) {
   io.to(`family:${seniorId}`).emit('wellness:alert', { alert });
 }
 
@@ -777,46 +779,182 @@ app.post('/api/connections/:id/role', authMiddleware, (req: AuthRequest, res) =>
 
 // Check-in API - Protected route
 app.post(['/api/checkin', '/api/v1/checkin'], authMiddleware, checkinLimiter, (req: AuthRequest, res) => {
-  // SECURITY: User can only check in for themselves
-  const userId = req.user!.id;
-  const { status, message } = req.body;
-  
-  const id = `${userId}-${Date.now()}`;
-  
   try {
-    const stmt = db.prepare(
-      'INSERT INTO activity_events (id, user_id, type, value) VALUES (?, ?, ?, ?)'
-    );
-    stmt.run(id, userId, 'checkin', JSON.stringify({ status, message }));
-    
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as { role?: 'senior' | 'family' } | undefined;
-    
-    if (user?.role === 'senior') {
+    const user = req.user!;
+    const { status = 'okay', message = '' } = req.body;
+    const timestamp = new Date().toISOString();
+
+    if (user.role === 'senior') {
+      // SENIOR path: record a check-in activity for themselves
+      if (req.body.userId && req.body.userId !== user.id) {
+        return res.status(403).json({ error: 'You can only check in for yourself' });
+      }
+
+      const id = `${user.id}-checkin-${Date.now()}`;
+      db.prepare(
+        'INSERT INTO activity_events (id, user_id, type, value) VALUES (?, ?, ?, ?)'
+      ).run(id, user.id, 'checkin', JSON.stringify({ status, message }));
+
       const checkInData = {
         id,
-        userId,
+        userId: user.id,
         status,
         message,
-        timestamp: new Date().toISOString()
+        timestamp
       };
-      
+
+      // Notify all connected family members
       const connections = db.prepare(
         'SELECT family_member_id FROM family_connections WHERE senior_id = ?'
-      ).all(userId);
-      
+      ).all(user.id);
       connections.forEach((conn: any) => {
         emitFamilyUpdate(conn.family_member_id, {
           type: 'checkin',
           data: checkInData
         });
       });
-      
-      emitCheckInNotification(userId, checkInData);
+      emitCheckInNotification(user.id, checkInData);
+
+      // Auto-resolve any pending check-in requests for this senior
+      db.prepare(`
+        UPDATE alerts
+        SET acknowledged = 1, acknowledged_at = ?
+        WHERE user_id = ? AND type = 'checkin_request' AND acknowledged = 0
+      `).run(timestamp, user.id);
+
+      return res.status(201).json({
+        success: true,
+        checkinId: id,
+        userId: user.id,
+        status,
+        message,
+        timestamp
+      });
     }
-    
-    res.status(201).json({ id, userId, status, message, timestamp: new Date().toISOString() });
+
+    if (user.role === 'family') {
+      // FAMILY path: create a pending check-in request for the connected senior
+      if (status !== 'pending') {
+        return res.status(400).json({ error: 'Family check-ins must use status: pending' });
+      }
+
+      const connection = db.prepare(`
+        SELECT senior_id FROM family_connections
+        WHERE family_member_id = ?
+        ORDER BY created_at DESC LIMIT 1
+      `).get(user.id) as { senior_id: string } | undefined;
+
+      if (!connection) {
+        return res.status(403).json({
+          error: 'No connected senior found. You must be connected to a senior to request a check-in.'
+        });
+      }
+
+      const seniorId = connection.senior_id;
+      const requestId = `${user.id}-request-${Date.now()}`;
+
+      db.prepare(`
+        INSERT INTO alerts (id, user_id, type, level, message, data, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        requestId,
+        seniorId,
+        'checkin_request',
+        'info',
+        message || 'A family member requested a check-in.',
+        JSON.stringify({ requestedBy: user.id }),
+        timestamp
+      );
+
+      emitAlertNotification(seniorId, {
+        type: 'checkin_request',
+        requestId,
+        seniorId,
+        requestedBy: user.id,
+        message: message || 'A family member requested a check-in.',
+        timestamp
+      });
+
+      return res.status(201).json({
+        success: true,
+        seniorId,
+        requestId,
+        message: message || 'A family member requested a check-in.',
+        timestamp
+      });
+    }
+
+    return res.status(403).json({ error: 'Check-in is only available for seniors and family members' });
   } catch (error) {
+    logger.error('Check-in error', error);
     res.status(500).json({ error: 'Failed to record check-in' });
+  }
+});
+
+// Fetch pending check-in requests for a senior (senior or connected family)
+app.get('/api/v1/checkin/requests/:seniorId', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    const { seniorId } = req.params;
+
+    // Verify access: senior themselves, or a connected family member
+    if (user.id !== seniorId) {
+      const connection = db.prepare(`
+        SELECT 1 FROM family_connections
+        WHERE senior_id = ? AND family_member_id = ?
+      `).get(seniorId, user.id);
+      if (!connection) {
+        return res.status(403).json({ error: 'Access denied to these check-in requests' });
+      }
+    }
+
+    const requests = db.prepare(`
+      SELECT id, user_id as seniorId, type, level, message, data, created_at as createdAt
+      FROM alerts
+      WHERE user_id = ? AND type = 'checkin_request' AND acknowledged = 0
+      ORDER BY created_at DESC
+    `).all(seniorId);
+
+    res.status(200).json({ success: true, requests });
+  } catch (error) {
+    logger.error('Fetch check-in requests error', error);
+    res.status(500).json({ error: 'Failed to fetch check-in requests' });
+  }
+});
+
+// Resolve (dismiss/fulfill) a pending check-in request
+app.post('/api/v1/checkin/requests/:id/resolve', authMiddleware, (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    const { id } = req.params;
+    const timestamp = new Date().toISOString();
+
+    const request = db.prepare(`
+      SELECT * FROM alerts WHERE id = ? AND type = 'checkin_request'
+    `).get(id) as { user_id: string } | undefined;
+
+    if (!request) {
+      return res.status(404).json({ error: 'Check-in request not found' });
+    }
+
+    if (user.id !== request.user_id) {
+      const connection = db.prepare(`
+        SELECT 1 FROM family_connections
+        WHERE senior_id = ? AND family_member_id = ?
+      `).get(request.user_id, user.id);
+      if (!connection) {
+        return res.status(403).json({ error: 'Access denied to resolve this request' });
+      }
+    }
+
+    db.prepare(`
+      UPDATE alerts SET acknowledged = 1, acknowledged_at = ? WHERE id = ?
+    `).run(timestamp, id);
+
+    res.status(200).json({ success: true, resolvedRequestId: id, timestamp });
+  } catch (error) {
+    logger.error('Resolve check-in request error', error);
+    res.status(500).json({ error: 'Failed to resolve check-in request' });
   }
 });
 

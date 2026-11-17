@@ -81,8 +81,8 @@ export default (db: betterSqlite3.Database) => {
         SELECT 
           DATE(timestamp) as date,
           COUNT(*) as activity_count,
-          SUM(CASE WHEN type = 'check_in' THEN 1 ELSE 0 END) as check_ins
-        FROM activity_logs
+          SUM(CASE WHEN type = 'checkin' THEN 1 ELSE 0 END) as check_ins
+        FROM activity_events
         WHERE user_id = ? AND timestamp >= ?
         GROUP BY DATE(timestamp)
         ORDER BY date DESC
