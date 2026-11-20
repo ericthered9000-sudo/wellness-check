@@ -5,6 +5,7 @@
 
 import Database from 'better-sqlite3';
 import { sanitizeText } from './utils/sanitize';
+import { getUserTimezone, getZonedParts, wallClockToUtc } from './utils/zone';
 
 let db: any;
 
@@ -104,7 +105,7 @@ export function createMedication(data: {
   const now = new Date().toISOString();
   
   // Calculate next due time
-  const nextDue = calculateNextDue(data.times);
+  const nextDue = calculateNextDue(data.times, data.userId);
   
   const stmt = db.prepare(`
     INSERT INTO medications (id, user_id, name, dosage, unit, instructions, schedule, times, next_due, active, created_at, updated_at)
@@ -199,7 +200,7 @@ export function updateMedication(id: string, data: Partial<{
     updates.push('times = ?');
     values.push(JSON.stringify(data.times));
     updates.push('next_due = ?');
-    values.push(calculateNextDue(data.times));
+    values.push(calculateNextDue(data.times, medication.user_id));
   }
   
   updates.push('updated_at = ?');
@@ -244,7 +245,7 @@ export function logMedicationTaken(medicationId: string, userId: string, notes?:
   // Update medication's last_taken
   const medStmt = db.prepare('UPDATE medications SET last_taken = ?, next_due = ? WHERE id = ?');
   const medication = getMedication(medicationId);
-  const nextDue = medication ? calculateNextDue(medication.times) : null;
+  const nextDue = medication ? calculateNextDue(medication.times, userId || medication.user_id) : null;
   medStmt.run(now, nextDue, medicationId);
   
   return {
@@ -277,7 +278,7 @@ export function logMedicationSkipped(medicationId: string, userId: string, reaso
   // Update next_due
   const medication = getMedication(medicationId);
   if (medication) {
-    const nextDue = calculateNextDue(medication.times);
+    const nextDue = calculateNextDue(medication.times, userId);
     db.prepare('UPDATE medications SET next_due = ? WHERE id = ?').run(nextDue, medicationId);
   }
   
@@ -413,32 +414,47 @@ export function getOverdueMedications(userId: string): (Medication & { overdueTi
 
 // ==================== Helper Functions ====================
 
+// Resolve a medication owner's timezone (senior_profiles.timezone; the
+// column exists at index.ts schema init with DEFAULT 'America/Chicago').
+// Kept local to avoid importing db into utils/zone.
+function getMedicationTimezone(userId: string): string {
+  return getUserTimezone(db, userId);
+}
+
 /**
- * Calculate next due time based on schedule
+ * Calculate next due time based on schedule, in the medication owner's
+ * timezone (vc30 fix: previously used server-local wall clock — UTC on
+ * the Railway host — so a senior's 09:00 reminder was stored/parsed as
+ * 09:00 UTC and fired at the wrong local time across timezone/DST
+ * boundaries). Now resolves the wall clock in the owner's IANA timezone
+ * and stores a proper UTC instant.
  */
-function calculateNextDue(times: string[]): string | null {
+function calculateNextDue(times: string[], userId: string): string | null {
   if (!times || times.length === 0) return null;
-  
+
+  const timezone = getMedicationTimezone(userId);
   const now = new Date();
-  const currentTime = now.toTimeString().slice(0, 5);
-  
-  // Find the next time that's in the future
+  const nowParts = getZonedParts(now, timezone);
+  const currentTime = `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`;
+
+  // Find the next scheduled time that's still ahead of the owner's local
+  // wall clock; otherwise the first time tomorrow.
   const nextTime = times.find(t => t > currentTime);
-  
-  if (nextTime) {
-    // Today
-    const next = new Date(now);
-    const [hours, minutes] = nextTime.split(':').map(Number);
-    next.setHours(hours, minutes, 0, 0);
-    return next.toISOString();
-  } else {
-    // Tomorrow
-    const next = new Date(now);
-    next.setDate(next.getDate() + 1);
-    const [hours, minutes] = times[0].split(':').map(Number);
-    next.setHours(hours, minutes, 0, 0);
-    return next.toISOString();
-  }
+  const [hours, minutes] = (nextTime ?? times[0]).split(':').map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+
+  const tomorrow = getZonedParts(new Date(now.getTime() + 24 * 60 * 60 * 1000), timezone);
+  const target = nextTime ? nowParts : tomorrow;
+
+  // Wall-clock HH:MM in the owner's zone → true UTC instant (DST-safe two-pass).
+  return wallClockToUtc(
+    target.year,
+    target.month,
+    target.day,
+    hours,
+    minutes,
+    timezone
+  ).toISOString();
 }
 
 /**

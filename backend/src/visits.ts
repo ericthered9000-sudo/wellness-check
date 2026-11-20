@@ -1,6 +1,7 @@
 // Doctor Visit Service
 import Database, { Database as DatabaseType } from 'better-sqlite3';
 import { sanitizeText } from './utils/sanitize';
+import { getUserTimezone, getZonedParts, wallClockToUtc } from './utils/zone';
 
 export interface DoctorVisit {
   id: string;
@@ -128,12 +129,16 @@ function createReminder(
   daysBefore: number
 ): void {
   const id = `reminder-${type}-${visitId}`;
-  const visitDate = new Date(visitDateTime);
-  const reminderDate = new Date(visitDate);
-  reminderDate.setDate(reminderDate.getDate() - daysBefore);
-  reminderDate.setHours(9, 0, 0, 0); // Remind at 9 AM
+  // vc30 fix: schedule the 09:00 reminder in the user's timezone
+  // (senior_profiles.timezone, default 'America/Chicago') — previously used
+  // server-local setHours(9,0,0,0) which on the UTC backend host fired at
+  // the wrong local time across timezone/DST boundaries.
+  const tz = getUserTimezone(db, userId);
+  const visitParts = getZonedParts(new Date(visitDateTime), tz);
 
-  // Only create if reminder date is in the future
+  // Reminder fires at 09:00 local on (visit's local date - daysBefore).
+  // Only create if reminder date is in the future.
+  const reminderDate = wallClockToUtc(visitParts.year, visitParts.month, visitParts.day - daysBefore, 9, 0, tz);
   if (reminderDate > new Date()) {
     const stmt = db.prepare(`
       INSERT OR IGNORE INTO visit_reminders (id, visit_id, user_id, reminder_type, scheduled_for, sent)

@@ -118,6 +118,26 @@ router.post('/', (req: AuthRequest, res) => {
 });
 
 /**
+ * List medications for the authenticated caller (collection-root alias).
+ * GET /api/medications
+ * vc30 fix: the app issues a collection-root GET when no :userId is
+ * interpolated (e.g. an empty userId) — previously 404'd because only
+ * /:userId existed. Serves the caller's own medications (empty list for
+ * family members), same response shape as GET /:userId.
+ */
+router.get('/', (req: AuthRequest, res) => {
+  const userId = req.user?.id ?? '';
+
+  try {
+    const medications = getMedications(userId);
+    res.json(medications);
+  } catch (error: any) {
+    logger.error('Failed to get medications (collection root):', error);
+    res.status(500).json({ error: 'Failed to get medications' });
+  }
+});
+
+/**
  * Get all medications for a user
  * GET /api/medications/:userId
  */
