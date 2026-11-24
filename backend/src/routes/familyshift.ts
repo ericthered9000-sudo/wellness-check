@@ -1,6 +1,7 @@
 // FamilyShift Caregiver Coordination API Routes
 import { logger } from '../utils/logger';
 import { Router, Request, Response } from 'express';
+import { authMiddleware } from '../middleware/auth';
 import * as betterSqlite3 from 'better-sqlite3';
 
 interface FamilyShiftRouterOptions {
@@ -9,6 +10,7 @@ interface FamilyShiftRouterOptions {
 
 export default function familyshiftRouter({ db }: FamilyShiftRouterOptions): Router {
   const router = Router();
+  router.use(authMiddleware);
 
   const generateId = (): string =>
     `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

@@ -17,6 +17,9 @@ import { Server } from 'socket.io';
 
 const router = Router();
 
+// Router-level auth covers every route; per-route middleware on fall stays (harmless double-check)
+router.use(authMiddleware);
+
 export default (db: betterSqlite3.Database, io: Server) => {
   /**
    * POST /api/v1/alerts/fall

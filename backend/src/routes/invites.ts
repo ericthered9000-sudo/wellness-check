@@ -1,8 +1,11 @@
 import express from 'express';
 import { logger } from '../utils/logger';
 import { inviteLimiter } from '../middleware/rateLimit';
+import { authMiddleware } from '../middleware/auth';
 
 const router = express.Router();
+
+router.use(authMiddleware);
 
 // Generate 8-character alphanumeric invite code (e.g., HB-X7K9M2P4)
 function generateInviteCode(): string {

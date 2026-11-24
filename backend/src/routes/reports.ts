@@ -5,8 +5,11 @@
 import express from 'express';
 import { logger } from '../utils/logger';
 import { getWeeklyReport, getWeeklyReports, generateWeeklyReport } from '../reports';
+import { authMiddleware } from '../middleware/auth';
 
 const router = express.Router();
+
+router.use(authMiddleware);
 
 // ==================== Weekly Reports ====================
 
