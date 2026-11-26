@@ -1,0 +1,2 @@
+# keep local runtime db and backups out of railway up uploads
+backend/wellness.db

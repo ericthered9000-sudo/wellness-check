@@ -38,3 +38,6 @@ ios/
 # Testing
 *.test.js
 *.spec.js
+
+# Runtime db (local dev only)
+backend/wellness.db
