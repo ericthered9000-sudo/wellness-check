@@ -2,6 +2,7 @@
 import { logger } from '../utils/logger';
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { AuthRequest } from '../types/auth';
 import * as betterSqlite3 from 'better-sqlite3';
 
 interface FamilyShiftRouterOptions {
@@ -16,6 +17,27 @@ export default function familyshiftRouter({ db }: FamilyShiftRouterOptions): Rou
     `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   // ==================== TASKS ====================
+
+  // List tasks (no seniorId): everything visible to the authenticated caller —
+  // tasks assigned to or created by them, plus tasks of seniors they support.
+  router.get('/tasks', (req: AuthRequest, res: Response) => {
+    try {
+      const me = req.user!.id;
+      const tasks = db.prepare(`
+        SELECT ct.*, u.email AS senior_email
+        FROM caregiver_tasks ct
+        JOIN users u ON u.id = ct.senior_id
+        WHERE ct.assigned_to = ?
+           OR ct.created_by = ?
+           OR ct.senior_id IN (SELECT senior_id FROM family_connections WHERE family_member_id = ?)
+        ORDER BY ct.created_at DESC
+      `).all(me, me, me);
+      res.json(tasks);
+    } catch (error) {
+      logger.error('Error fetching tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+  });
 
   // Create task
   router.post('/tasks', (req: Request, res: Response) => {
@@ -47,7 +69,9 @@ export default function familyshiftRouter({ db }: FamilyShiftRouterOptions): Rou
   });
 
   // Update task
-  router.patch('/tasks/:id', (req: Request, res: Response) => {
+  // Update task — field clients (vc37/vc38) send PUT; PATCH retained for
+  // backward compatibility with earlier app builds.
+  const updateTask = (req: Request, res: Response) => {
     try {
       const { title, description, dueDate, priority, status } = req.body;
       const existing = db.prepare('SELECT * FROM caregiver_tasks WHERE id = ?').get(req.params.id);
@@ -63,10 +87,13 @@ export default function familyshiftRouter({ db }: FamilyShiftRouterOptions): Rou
       logger.error('Error updating task:', error);
       res.status(500).json({ error: 'Failed to update task' });
     }
-  });
+  };
+  router.patch('/tasks/:id', updateTask);
+  router.put('/tasks/:id', updateTask);
 
-  // Mark task complete
-  router.patch('/tasks/:id/complete', (req: Request, res: Response) => {
+  // Mark task complete — field clients (vc37/vc38) send POST; PATCH retained
+  // for backward compatibility with earlier app builds.
+  const completeTask = (req: Request, res: Response) => {
     try {
       const { completedBy } = req.body;
       db.prepare(`UPDATE caregiver_tasks SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
@@ -77,7 +104,9 @@ export default function familyshiftRouter({ db }: FamilyShiftRouterOptions): Rou
       logger.error('Error completing task:', error);
       res.status(500).json({ error: 'Failed to complete task' });
     }
-  });
+  };
+  router.patch('/tasks/:id/complete', completeTask);
+  router.post('/tasks/:id/complete', completeTask);
 
   // Delete task
   router.delete('/tasks/:id', (req: Request, res: Response) => {

@@ -126,7 +126,7 @@ export function checkForAlerts(db: any, userId: string): string[] {
     ORDER BY timestamp DESC LIMIT 1
   `).get(userId) as { timestamp: string | null };
 
-  if (lastCharging.timestamp) {
+  if (lastCharging && lastCharging.timestamp) {
     const chargingDate = new Date(lastCharging.timestamp);
     const currentHour = new Date().getHours();
     

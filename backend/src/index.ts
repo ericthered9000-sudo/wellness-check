@@ -4,6 +4,7 @@ import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import Database from 'better-sqlite3';
+import * as betterSqlite3 from 'better-sqlite3';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -100,7 +101,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/api', apiLimiter);
 
 // Database setup
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 
 const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH 
   ? `${process.env.RAILWAY_VOLUME_MOUNT_PATH}/wellness.db`
@@ -113,8 +114,74 @@ if (dbDir && !existsSync(dbDir)) {
   mkdirSync(dbDir, { recursive: true });
 }
 
+// Schema migrations for persistent DBs: a Railway-volume wellness.db can
+// predate a code change (CREATE TABLE IF NOT EXISTS never repairs an existing
+// table), and fresh deploys must self-provision every table the routes touch.
+function runSchemaMigrations(database: betterSqlite3.Database): void {
+  // 1) activity_events type CHECK repair. Older deploys created the table with
+  //    a CHECK listing only ('motion','location','screen','charging','checkin'),
+  //    so POST /api/v1/alerts/fall (type 'fall'), the no-movement path
+  //    ('no_movement') and the vc38 SOS path ('emergency') all failed with
+  //    "CHECK constraint failed" -> 500 ALERT_ERROR. SQLite cannot ALTER an
+  //    inline CHECK constraint, so rebuild the table only when the old CHECK
+  //    is detected (idempotent: skipped once the wide list is present).
+  const eventsRow = database
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'activity_events'")
+    .get() as { sql?: string } | undefined;
+  const eventsSql = eventsRow?.sql ?? '';
+  if (eventsSql.includes("('motion', 'location', 'screen', 'charging', 'checkin'))") && !eventsSql.includes("'fall'")) {
+    logger.warn('Migrating activity_events: widening type CHECK to allow fall/no_movement/emergency');
+    database.exec(`
+      PRAGMA foreign_keys = OFF;
+      BEGIN;
+      CREATE TABLE activity_events_migrated (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('motion', 'location', 'screen', 'charging', 'checkin', 'fall', 'no_movement', 'emergency')),
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        value TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+      INSERT INTO activity_events_migrated (id, user_id, type, timestamp, value)
+        SELECT id, user_id, type, timestamp, value FROM activity_events;
+      DROP TABLE activity_events;
+      ALTER TABLE activity_events_migrated RENAME TO activity_events;
+      COMMIT;
+    `);
+  }
+
+  // 1b) activity_events.created_at: routes/alerts.ts (POST /fall, /no-movement)
+  //     and index.ts write created_at; tables predating that never had the
+  //     column ("no column named created_at" -> 500). ALTER cannot add a
+  //     CURRENT_TIMESTAMP default in SQLite, so add it without a default —
+  //     every writer supplies the value explicitly.
+  const eventsHasCol = (name: string): boolean =>
+    (database.prepare('PRAGMA table_info(activity_events)').all() as { name: string }[])
+      .some(c => c.name === name);
+  if (eventsHasCol('id') && !eventsHasCol('created_at')) {
+    logger.warn('Migrating activity_events: adding missing created_at column');
+    database.exec('ALTER TABLE activity_events ADD COLUMN created_at DATETIME');
+  }
+
+  // 2) FamilyShift tables. routes/familyshift.ts reads caregiver_tasks,
+  //    care_journal, care_expenses, care_events and expense_splits, but
+  //    src/familyshift-schema.sql shipped in-tree without ever being wired to
+  //    startup -> every /api/v1/familyshift call failed with
+  //    "no such table: caregiver_tasks" -> 500. Load it idempotently
+  //    (every statement is IF NOT EXISTS).
+  try {
+    const schemaPath = path.join(__dirname, '..', 'src', 'familyshift-schema.sql');
+    database.exec(readFileSync(schemaPath, 'utf8'));
+    logger.info('FamilyShift schema loaded', { path: schemaPath });
+  } catch (error) {
+    logger.warn('FamilyShift schema load skipped', { error: (error as Error).message });
+  }
+}
+
 logger.info('Database initialized', { path: dbPath });
 const db = new Database(dbPath);
+runSchemaMigrations(db);
 
 // Inject DB into medications service
 setMedsDb(db);
@@ -160,9 +227,10 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS activity_events (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('motion', 'location', 'screen', 'charging', 'checkin')),
+    type TEXT NOT NULL CHECK(type IN ('motion', 'location', 'screen', 'charging', 'checkin', 'fall', 'no_movement', 'emergency')),
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     value TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
@@ -180,6 +248,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS alerts (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    senior_id TEXT,
     type TEXT NOT NULL,
     level TEXT,
     message TEXT,
@@ -318,6 +387,53 @@ try {
 } catch (e) {
   logger.warn('Migration: alerts columns verification failed (may already exist)', { error: e });
 }
+
+// Migration: legacy alerts tables still enforce NOT NULL senior_id, but
+// routes/alerts.ts (POST /fall, POST /no-movement) writes user_id only ->
+// "NOT NULL constraint failed: alerts.senior_id" -> 500 ALERT_ERROR.
+// SQLite cannot drop a NOT NULL constraint via ALTER, so rebuild the table
+// once in the current shape, preserving every row. Runs after the column
+// normalization above so all source columns exist on any legacy shape.
+try {
+  const alertInfo = db.prepare(`PRAGMA table_info(alerts)`).all() as { name: string; notnull: number }[];
+  if (alertInfo.some(c => c.name === 'senior_id' && c.notnull === 1)) {
+    logger.warn('Migrating alerts: dropping legacy NOT NULL senior_id constraint');
+    const legacyCols = alertInfo.map(c => c.name);
+    const has = (col: string) => legacyCols.includes(col);
+    const createdAtExpr = has('created_at')
+      ? (has('triggered_at') ? 'COALESCE(created_at, triggered_at)' : 'created_at')
+      : (has('triggered_at') ? 'triggered_at' : 'CURRENT_TIMESTAMP');
+    const userIdExpr = `COALESCE(${has('user_id') ? 'user_id' : 'NULL'}, senior_id)`;
+    const ackExpr = has('acknowledged') ? 'COALESCE(acknowledged, 0)' : '0';
+    const ackAtExpr = has('acknowledged_at') ? 'acknowledged_at' : 'NULL';
+    db.exec(`
+      PRAGMA foreign_keys = OFF;
+      BEGIN;
+      CREATE TABLE alerts_migrated (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        senior_id TEXT,
+        type TEXT NOT NULL,
+        level TEXT,
+        message TEXT,
+        data TEXT,
+        acknowledged INTEGER DEFAULT 0,
+        acknowledged_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO alerts_migrated (id, user_id, senior_id, type, level, message, data, acknowledged, acknowledged_at, created_at)
+        SELECT id, ${userIdExpr}, senior_id, type, level, message, data, ${ackExpr}, ${ackAtExpr}, ${createdAtExpr}
+        FROM alerts;
+      DROP TABLE alerts;
+      ALTER TABLE alerts_migrated RENAME TO alerts;
+      COMMIT;
+    `);
+    logger.info('Migration: alerts legacy senior_id constraint cleared');
+  }
+} catch (e) {
+  logger.warn('Migration: alerts senior_id rebuild failed', { error: e });
+}
+
 
 // Migration: Add Google Play subscription verification columns if missing
 try {
