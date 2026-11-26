@@ -101,7 +101,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/api', apiLimiter);
 
 // Database setup
-import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, copyFileSync, statSync, unlinkSync } from 'fs';
 
 const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH 
   ? `${process.env.RAILWAY_VOLUME_MOUNT_PATH}/wellness.db`
@@ -164,6 +164,9 @@ function runSchemaMigrations(database: betterSqlite3.Database): void {
     database.exec('ALTER TABLE activity_events ADD COLUMN created_at DATETIME');
   }
 
+  // (be-002 handled separately below init: guarded startup hook
+  // runBe002ActivityEventsMigration, called before routes bind.)
+
   // 2) FamilyShift tables. routes/familyshift.ts reads caregiver_tasks,
   //    care_journal, care_expenses, care_events and expense_splits, but
   //    src/familyshift-schema.sql shipped in-tree without ever being wired to
@@ -179,9 +182,245 @@ function runSchemaMigrations(database: betterSqlite3.Database): void {
   }
 }
 
+// be-002: guarded startup migration for activity_events.type — widen the CHECK
+// to accept 'sos_alert' during DB init (BEFORE routes bind). Guard set:
+// content-based idempotence (zero writes when already correct), timestamped
+// .bak on the volume BEFORE any mutation (size verified > 0), data-preserving
+// rebuild with named-index recreation, exact row-count reconcile
+// (activity_events/users/alerts), PRAGMA integrity_check + foreign_key_check
+// pre/post, explicit BEGIN/ROLLBACK sos_alert insert proof with zero residue,
+// and restore-from-.bak on ANY failure with the service still booting
+// (fail-open: old schema keeps serving; CRITICAL logged to stdout).
+function runBe002ActivityEventsMigration(
+  database: betterSqlite3.Database,
+  databasePath: string
+): betterSqlite3.Database {
+  const B = 'BE002:';
+  const one = (sql: string): any => database.prepare(sql).get();
+  const all = (sql: string): any[] => database.prepare(sql).all();
+  const countOf = (table: string): number =>
+    (all(`SELECT COUNT(*) AS c FROM ${table}`)[0]?.c ?? -1) as number;
+  const tableExists = (name: string): boolean =>
+    one(`SELECT 1 AS s FROM sqlite_master WHERE type='table' AND name='${name}'`) !== undefined;
+
+  // Set only once the pre-mutation guards pass, BEFORE any db write.
+  let bakPath: string | null = null;
+  let abortReason = '';
+
+  // Restore-from-.bak: the only safe sequence with an open handle is
+  // close -> remove sidecar files -> copy the backup back -> reopen. The
+  // caller must return the reopened handle so the rest of boot binds to it.
+  const restoreAndReopen = (detail: string): betterSqlite3.Database => {
+    try {
+      database.close();
+    } catch (error) {
+      console.error(`${B}CRITICAL close-before-restore failed: ${(error as Error).message}`);
+      return database;
+    }
+    for (const side of ['-wal', '-shm', '-journal']) {
+      try { if (existsSync(databasePath + side)) unlinkSync(databasePath + side); } catch { /* best effort */ }
+    }
+    try {
+      if (bakPath) {
+        copyFileSync(bakPath, databasePath);
+        console.log(`${B}RESTORED from=${bakPath} (${detail})`);
+      }
+    } catch (error) {
+      console.error(`${B}CRITICAL restore-copy failed: ${(error as Error).message}`);
+    }
+    console.log(`${B}STATUS mode=aborted reason="${abortReason}"`);
+    return new Database(databasePath);
+  };
+
+  try {
+    // (i) idempotent content guard: fresh volume -> nothing to migrate;
+    // CHECK already lists 'sos_alert' -> zero writes, no backup.
+    const tableRow = one("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'activity_events'") as { sql?: string } | undefined;
+    if (!tableRow || !tableRow.sql) {
+      console.log(`${B}SKIP activity_events absent on this volume (fresh db; boot schema creates it with sos_alert)`);
+      return database;
+    }
+    if (tableRow.sql.includes("'sos_alert'")) {
+      console.log(`${B}SKIPPED_ALREADY_CORRECT (BE002: skipped_already_correct - CHECK already accepts sos_alert; zero writes, no backup)`);
+      return database;
+    }
+
+    // Read-only recon: reconcile baselines, index recreation plan, guards.
+    const integrityPre = (one('PRAGMA integrity_check') as { integrity_check?: string }).integrity_check;
+    const fkViolPre = all('PRAGMA foreign_key_check');
+    const fkRow = one('PRAGMA foreign_keys') as { foreign_keys?: number };
+    const fkBefore = fkRow?.foreign_keys === 1;
+    const eventIndexes = all("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='activity_events' AND name NOT LIKE 'sqlite_autoindex%'") as { name: string; sql: string | null }[];
+    const aeCountPre = countOf('activity_events');
+    const aeDistPre = JSON.stringify(all('SELECT type, COUNT(*) AS c FROM activity_events GROUP BY type ORDER BY type'));
+    const usersPre = tableExists('users') ? countOf('users') : -1;
+    const alertsPre = tableExists('alerts') ? countOf('alerts') : -1;
+    const liveCols = (all('PRAGMA table_info(activity_events)') as { name: string }[]).map(c => c.name);
+
+    // (ii) hard guards BEFORE any mutation: db untouched on failure, so no
+    // backup/restore involved; the service continues on the old schema.
+    if (integrityPre !== 'ok') {
+      abortReason = `integrity_pre:${integrityPre}`;
+      console.error(`${B}CRITICAL BE002:ABORT integrity_check=${integrityPre} pre-migration; continuing on old schema`);
+      console.log(`${B}STATUS mode=aborted reason="${abortReason}"`);
+      return database;
+    }
+    if (usersPre === -1) {
+      abortReason = 'users_table_missing';
+      console.error(`${B}CRITICAL BE002:ABORT users table missing; continuing on old schema`);
+      console.log(`${B}STATUS mode=aborted reason="${abortReason}"`);
+      return database;
+    }
+    const missingCols = (['id', 'user_id', 'type', 'timestamp', 'value', 'created_at'])
+      .filter(c => !liveCols.includes(c));
+    if (missingCols.length > 0) {
+      abortReason = `missing_columns:${missingCols.join(',')}`;
+      console.error(`${B}CRITICAL BE002:ABORT activity_events missing columns ${missingCols.join(', ')}; continuing on old schema`);
+      console.log(`${B}STATUS mode=aborted reason="${abortReason}"`);
+      return database;
+    }
+
+    // (ii) timestamped .bak ON THE SAME VOLUME (same directory as the db),
+    // size verified > 0 BEFORE any mutation; WAL sidecars copied too.
+    const utcStamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14) + 'Z';
+    bakPath = `${databasePath}.bak-be002-${utcStamp}`;
+    copyFileSync(databasePath, bakPath);
+    for (const side of ['-wal', '-shm', '-journal']) {
+      if (existsSync(databasePath + side)) copyFileSync(databasePath + side, bakPath + side);
+    }
+    const bakSize = statSync(bakPath).size;
+    console.log(`${B}BACKUP ${bakPath} size=${bakSize}`);
+    if (bakSize <= 0) {
+      abortReason = 'backup_empty';
+      console.error(`${B}CRITICAL BE002:ABORT backup empty; continuing on old schema`);
+      console.log(`${B}STATUS mode=aborted reason="${abortReason}"`);
+      return database;
+    }
+
+    // (iii) data-preserving rebuild: corrected CHECK including 'sos_alert',
+    // all six columns copied, named indexes recreated verbatim; any statement
+    // failure rolls the whole transaction back and the .bak comes back.
+    const indexSqls = eventIndexes.map(i => i.sql).filter((s): s is string => typeof s === 'string');
+    const rebuildStatements = [
+      'PRAGMA foreign_keys = OFF;',
+      'BEGIN;',
+      'DROP TABLE IF EXISTS activity_events_migrated;',
+      `CREATE TABLE activity_events_migrated (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('motion', 'location', 'screen', 'charging', 'checkin', 'fall', 'no_movement', 'emergency', 'sos_alert')),
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        value TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );`,
+      'INSERT INTO activity_events_migrated (id, user_id, type, timestamp, value, created_at)',
+      '  SELECT id, user_id, type, timestamp, value, created_at FROM activity_events;',
+      'DROP TABLE activity_events;',
+      'ALTER TABLE activity_events_migrated RENAME TO activity_events;',
+      ...indexSqls.map(sql => (sql.endsWith(';') ? sql : sql + ';')),
+      'COMMIT;'
+    ].join('\n');
+    try {
+      database.exec(rebuildStatements);
+      console.log(`${B}MIGRATE_APPLIED rows=${aeCountPre} indexes_recreated=${indexSqls.length}/${eventIndexes.length}`);
+    } catch (error) {
+      abortReason = `rebuild:${(error as Error).message}`;
+      try { database.exec('ROLLBACK'); } catch { /* tx may have auto-rolled-back */ }
+      database.pragma(fkBefore ? 'foreign_keys = ON' : 'foreign_keys = OFF');
+      console.error(`${B}CRITICAL BE002:ABORT rebuild failed: ${(error as Error).message}; restoring backup`);
+      return restoreAndReopen(abortReason);
+    }
+    database.pragma(fkBefore ? 'foreign_keys = ON' : 'foreign_keys = OFF');
+
+    // (iv) reconcile + integrity/fk checks; on ANY mismatch restore from .bak
+    // and keep serving on the old schema.
+    const aeCountPost = countOf('activity_events');
+    const aeDistPost = JSON.stringify(all('SELECT type, COUNT(*) AS c FROM activity_events GROUP BY type ORDER BY type'));
+    const usersPost = tableExists('users') ? countOf('users') : -1;
+    const alertsPost = tableExists('alerts') ? countOf('alerts') : -1;
+    const integrityPost = (one('PRAGMA integrity_check') as { integrity_check?: string }).integrity_check;
+    const fkViolPost = all('PRAGMA foreign_key_check');
+    const aeSqlPost = (one("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'activity_events'") as { sql?: string } | undefined)?.sql ?? '';
+    const eventIndexNamesPost = all("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='activity_events' AND name NOT LIKE 'sqlite_autoindex%'").map(r => r.name);
+    const rowcountsReconcile = aeCountPost === aeCountPre && aeDistPost === aeDistPre
+      && usersPost === usersPre && alertsPost === alertsPre;
+    const structuralOk = integrityPost === 'ok'
+      && fkViolPost.length === fkViolPre.length
+      && aeSqlPost.includes("'sos_alert'")
+      && eventIndexNamesPost.length === eventIndexes.length;
+    console.log(`${B}VERIFY rowcounts activity_events=${aeCountPre}->${aeCountPost} users=${usersPre}->${usersPost} alerts=${alertsPre}->${alertsPost} reconcile=${rowcountsReconcile ? 'exact' : 'MISMATCH'} integrity=${integrityPost} fkViol=${fkViolPost.length}(was ${fkViolPre.length}) indexes=${eventIndexes.length}->${eventIndexNamesPost.length} check_contains_sos_alert=${aeSqlPost.includes("'sos_alert'")}`);
+    if (!rowcountsReconcile || !structuralOk) {
+      abortReason = rowcountsReconcile ? 'verify_structural' : 'rowcount';
+      if (!rowcountsReconcile) {
+        console.error(`${B}CRITICAL BE002:ABORT rowcount mismatch (BE002: rowcount mismatch); restoring backup`);
+      } else {
+        console.error(`${B}CRITICAL BE002:ABORT verify failed (structural checks); restoring backup`);
+      }
+      return restoreAndReopen(abortReason);
+    }
+
+    // (v) sos_alert insert-acceptance proof: explicit BEGIN/ROLLBACK, zero
+    // test rows left; foreign_keys suspended only for the proof so a
+    // synthetic user id works when users is empty.
+    const proofUser = (one('SELECT id AS id FROM users LIMIT 1') as { id?: string })?.id ?? 'be002-proof-synthetic';
+    const proofId = `be002-proof-${Date.now().toString(36)}`;
+    let proofInsertError = '';
+    let proofCountAfterInsert = -1;
+    try {
+      database.pragma('foreign_keys = OFF');
+      database.exec('BEGIN');
+      database.prepare("INSERT INTO activity_events (id, user_id, type, timestamp, value, created_at) VALUES (?, ?, 'sos_alert', ?, 'BE002-PROOF-INSERT', ?)")
+        .run(proofId, proofUser, '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+      proofCountAfterInsert = countOf('activity_events');
+    } catch (error) {
+      proofInsertError = (error as Error).message;
+    } finally {
+      try { database.exec('ROLLBACK'); } catch { /* proof tx may have died with the error */ }
+      database.pragma(fkBefore ? 'foreign_keys = ON' : 'foreign_keys = OFF');
+    }
+    const proofResidue = countOf('activity_events');
+    const proofOk = proofInsertError === '' && proofCountAfterInsert === aeCountPre + 1 && proofResidue === aeCountPre;
+    if (proofOk) {
+      const integrityPostProof = (one('PRAGMA integrity_check') as { integrity_check?: string }).integrity_check;
+      const fkViolPostProof = all('PRAGMA foreign_key_check');
+      const postProofOk = integrityPostProof === 'ok' && fkViolPostProof.length === fkViolPre.length;
+      console.log(`${B}PROOF_OK sos_insert_accepted=true rolled_back=true test_rows_remaining=0 integrity=${integrityPostProof} fkViol=${fkViolPostProof.length}`);
+      if (!postProofOk) {
+        abortReason = `post_proof:integrity=${integrityPostProof}:fkViol=${fkViolPostProof.length}`;
+        console.error(`${B}CRITICAL BE002:ABORT post-proof checks failed; restoring backup`);
+        return restoreAndReopen(abortReason);
+      }
+    } else {
+      abortReason = `proof:${proofInsertError || `after=${proofCountAfterInsert} residue=${proofResidue}`}`;
+      console.error(`${B}CRITICAL BE002:ABORT proof failed (${abortReason}); restoring backup`);
+      return restoreAndReopen(abortReason);
+    }
+
+    console.log(`${B}DONE_OK mode=applied backup=${bakPath} rows=${aeCountPre} abort_reason=none`);
+    return database;
+  } catch (error) {
+    try { database.exec('ROLLBACK'); } catch { /* not in a transaction */ }
+    if (bakPath === null) {
+      abortReason = `unexpected_pre_backup:${(error as Error).message}`;
+      console.error(`${B}CRITICAL BE002:ABORT unexpected: ${(error as Error).message}; continuing without migration`);
+      console.log(`${B}STATUS mode=aborted reason="${abortReason}"`);
+      return database;
+    }
+    abortReason = `unexpected_post_backup:${(error as Error).message}`;
+    console.error(`${B}CRITICAL BE002:ABORT unexpected: ${(error as Error).message}; restoring backup`);
+    return restoreAndReopen(abortReason);
+  }
+}
+
 logger.info('Database initialized', { path: dbPath });
-const db = new Database(dbPath);
+let db = new Database(dbPath);
 runSchemaMigrations(db);
+// be-002 guarded startup migration: runs during DB init, BEFORE routes bind.
+// Content-guarded + no-op when already correct; the returned handle replaces
+// `db` in case a restore path reopened the connection (every later use reads
+// this binding, so route module injections below stay correct).
+db = runBe002ActivityEventsMigration(db, dbPath);
 
 // Inject DB into medications service
 setMedsDb(db);
@@ -227,7 +466,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS activity_events (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('motion', 'location', 'screen', 'charging', 'checkin', 'fall', 'no_movement', 'emergency')),
+    type TEXT NOT NULL CHECK(type IN ('motion', 'location', 'screen', 'charging', 'checkin', 'fall', 'no_movement', 'emergency', 'sos_alert')),
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     value TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
